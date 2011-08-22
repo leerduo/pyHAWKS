@@ -65,7 +65,8 @@ class HITRANTransition(Transition):
         self.gp = None
         self.gpp = None
 
-        # the case module handling the quantum numbers for this transition
+        # the HITRAN case module, for parsing and writing transitions
+        # in the native .par format
         self.case_module = None
 
     @classmethod    # NB Python 2.4+
@@ -137,18 +138,13 @@ class HITRANTransition(Transition):
             this_trans.Qp = line[97:112]
             this_trans.Qpp = line[112:127]
 
-            # work out which case_module is going to handle the quantum
-            # numbers for this isotopologue:
-            this_trans.case_module = hitran_meta.get_case_module(
-                            this_trans.molec_id, this_trans.iso_id)
             # parse the quantum numbers into State objects and attach them
-            # to the transition; also determine the transition multipole
-            qnsp, qnspp, this_trans.multipole =\
-                this_trans.case_module.parse_qns(this_trans)
-            this_trans.statep = State(this_trans.molec_id, this_trans.iso_id,
-                this_trans.Eupper, None, this_trans.gp, qnsp)
-            this_trans.statepp = State(this_trans.molec_id, this_trans.iso_id,
-                this_trans.Elower, None, this_trans.gpp, qnspp)
+            # to the transition; also determine the transition multipole and
+            # get a reference to the appropriate HITRAN case module (which
+            # implements the get_hitran_quanta() method for writing the
+            # states out in the native HITRAN .par format
+            this_trans.case_module, this_trans.statep, this_trans.statepp,\
+                this_trans.multipole = hitran_meta.get_states(this_trans)
 
             # XXX error and reference indices
             #this_trans.Ierr = line[127:133]
@@ -165,29 +161,29 @@ class HITRANTransition(Transition):
 
         return this_trans
 
-    def statep_get(self, qn_name):
+    def statep_get(self, qn_name, default=None):
         """
         Get the value of quantum number qn_name for the upper state. If
-        the upper state isn't defined or qn_name isn't defined in the
-        upper state, return None.
+        the upper state isn't defined return None. If it is, but qn_name
+        isn't defined in the upper state, return default.
 
         """
 
         if self.statep is None:
             return None
-        return self.statep.get(qn_name)
+        return self.statep.get(qn_name, default)
 
-    def statepp_get(self, qn_name):
+    def statepp_get(self, qn_name, default=None):
         """
         Get the value of quantum number qn_name for the lower state. If
-        the lower state isn't defined or qn_name isn't defined in the
-        lower state, return None.
+        the lower state isn't defined return None. If it is, but qn_name
+        isn't defined in the lower state, return default.
 
         """
 
         if self.statepp is None:
             return None
-        return self.statepp.get(qn_name)
+        return self.statepp.get(qn_name, default)
 
     def validate_as_par(self):
         """

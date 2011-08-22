@@ -11,6 +11,7 @@
 # __all__ defines the list of modules that should be imported with
 # the line 'from hitran_cases import *'
 __all__ = [#'molecule_globals',
-           'hcase_dcs',
-           'hcase_nltcs',
+           'hcase_dcs', 'hdcs',
+           'hcase_nltcs', 'hnltcs',
+           'hcase_ltcs', 'hltcs',
           ]

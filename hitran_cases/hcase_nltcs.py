@@ -8,9 +8,8 @@
 # The hcase_nltcs module, with methods for writing and parsing the quantum
 # numbers of closed-shell non-linear triatomic molecules in the HITRAN
 # database.
-# Various things are imported from the base molecule_cases.nltcs module.
+# Various things are imported from the hcase_globals module.
 
-from molecule_cases.nltcs import *
 from hcase_globals import *
 
 def parse_qns(trans):
@@ -29,12 +28,12 @@ def parse_qns(trans):
     qnsp = {'ElecStateLabel': 'X'}
     qnspp = {'ElecStateLabel': 'X'}
 
-    save_qn(qnsp, 'v1', trans.Qp[9:11])
-    save_qn(qnsp, 'v2', trans.Qp[11:13])
-    save_qn(qnsp, 'v3', trans.Qp[13:15])
-    save_qn(qnspp, 'v1', trans.Qpp[9:11])
-    save_qn(qnspp, 'v2', trans.Qpp[11:13])
-    save_qn(qnspp, 'v3', trans.Qpp[13:15])
+    save_qn(qnsp, 'v1', trans.Vp[9:11])
+    save_qn(qnsp, 'v2', trans.Vp[11:13])
+    save_qn(qnsp, 'v3', trans.Vp[13:15])
+    save_qn(qnspp, 'v1', trans.Vpp[9:11])
+    save_qn(qnspp, 'v2', trans.Vpp[11:13])
+    save_qn(qnspp, 'v3', trans.Vpp[13:15])
 
     save_qn(qnsp, 'J', trans.Qp[0:3])
     save_qn(qnsp, 'Ka', trans.Qp[3:6])
@@ -73,7 +72,7 @@ def get_hitran_quanta(trans):
     s_Kcpp = qn_to_str(trans.statepp, 'Kc', '%3d', '   ')
     s_Fpp = qn_to_str(trans.statepp, 'F', '%5.1f', ' '*5)
 
-    Qp = '%s%s%s%s%s ' % (s_Jp, s_Kap, s_Kcp, s_Fp)
-    Qpp = '%s%s%s%s%s ' % (s_Jpp, s_Kapp, s_Kcpp, s_Fpp)
+    Qp = '%s%s%s%s ' % (s_Jp, s_Kap, s_Kcp, s_Fp)
+    Qpp = '%s%s%s%s ' % (s_Jpp, s_Kapp, s_Kcpp, s_Fpp)
 
     return Vp, Vpp, Qp, Qpp

@@ -7,9 +7,8 @@
 #
 # The hcase_dcs module, with methods for writing and parsing the quantum
 # numbers of closed-shell diatomic molecules in the HITRAN database.
-# Various things are imported from the base molecule_cases.dcs module.
+# Various things are imported from the hcase_globals module.
 
-from molecule_cases.dcs import *
 from hcase_globals import *
 
 def parse_qns(trans):
