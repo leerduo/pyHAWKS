@@ -15,14 +15,19 @@ from hcase_globals import *
 def parse_qns(trans):
     """
     Parse the quantum numbers for the upper and lower states of HITRAN
-    transition trans.
+    transition trans for the closed-shell diatomic case.
+    The returned values are qnsp, qnspp, multiple, where qnsp and qnspp
+    are dictionaries of upper and lower state quantum numbers respectively,
+    keyed by quantum number name, and multipole indicates the nature of
+    the transition ('E1' for electric dipole, 'M1' for magnetic dipole, and
+    'E2' for electric quadrupole).
 
     """
 
     # in HITRAN, the only dcs molecules are those in their ground
     # electronic states:
-    qnspp = {'ElecStateLabel': 'X'}
     qnsp = {'ElecStateLabel': 'X'}
+    qnspp = {'ElecStateLabel': 'X'}
 
     # vibrational quantum numbers are the only thing in the global
     # quanta field and they are always (non-negative) integers
@@ -54,8 +59,8 @@ def parse_qns(trans):
 
 def get_hitran_quanta(trans):
     """
-    Write the Vp, Vpp, Qp, Qpp strings for global and local quanta in
-    HITRAN2004+ format.
+    Write and return the Vp, Vpp, Qp, Qpp strings for global and local
+    quanta in HITRAN2004+ format.
 
     """
 

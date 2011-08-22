@@ -12,4 +12,5 @@
 # the line 'from hitran_cases import *'
 __all__ = [#'molecule_globals',
            'hcase_dcs',
+           'hcase_nltcs',
           ]
