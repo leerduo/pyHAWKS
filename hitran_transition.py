@@ -11,6 +11,7 @@
 
 from lbl.transition import Transition
 from lbl.state import State
+from hitran_param import HITRANParam
 import hitran_meta
 import xn_utils
 
@@ -86,6 +87,9 @@ class HITRANTransition(Transition):
 
         this_trans = HITRANTransition()
         this_trans.par_line = line
+
+        Ierr = line[127:133]
+        Iref = line[133:145]
         
         try:
             # HITRAN molecule ID
@@ -93,16 +97,26 @@ class HITRANTransition(Transition):
             # HITRAN isotopologue ID
             this_trans.iso_id = int(line[2])
             # vacuum wavenumber (cm-1)
-            this_trans.nu = float(line[3:15])
+            this_trans.nu = HITRANParam(val=float(line[3:15]),
+                ref=int(Iref[:2]), name='nu', ierr=int(Ierr[0]))
+                    
             # line intensity at 296 K(cm-1/(molec.cm-2). NB in the native
             # HITRAN format, this is weighted by isotopologue abundance
-            this_trans.Sw = float(line[15:25])
+            this_trans.Sw = HITRANParam(val=float(line[15:25]),
+                ref=int(Iref[2:4]), name='Sw', ierr=int(Ierr[1]),
+                relative=True)
+
             # Einstein A-coefficient (s-1)
-            this_trans.A = float(line[25:35])
+            this_trans.A = HITRANParam(val=float(line[25:35]),
+                ref=int(Iref[2:4]), name='A', ierr=int(Ierr[1]), relative=True)
             # air-broadened HWHM at 296 K (cm-1.atm-1)
-            this_trans.gamma_air = float(line[35:40])
+            this_trans.gamma_air = HITRANParam(val=float(line[35:40]),
+                ref=int(Iref[4:6]), name='gamma_air', ierr=int(Ierr[2]),
+                relative=True)
             # self-broadened HWHM at 296 K (cm-1.atm-1)
-            this_trans.gamma_self = float(line[40:45])
+            this_trans.gamma_self = HITRANParam(val=float(line[40:45]),
+                ref=int(Iref[6:8]), name='gamma_self', ierr=int(Ierr[3]),
+                relative=True)
             # lower-state energy (cm-1)
             this_trans.Elower = float(line[45:55])
             # missing lower state energies are indicated by -1.
@@ -112,11 +126,14 @@ class HITRANTransition(Transition):
             if this_trans.Elower is not None:
                 this_trans.set_Eupper()
             # T-dependence exponent for gamma_air
-            this_trans.n_air = float(line[55:59])
+            this_trans.n_air = HITRANParam(val=float(line[55:59]),
+                ref=int(Iref[8:10]), name='n_air', ierr=int(Ierr[4]),
+                relative=True)
             # air pressure-induced line shift at 296 K (cm-1.atm-1)
             # NB missing data is presented as '0.000000'
             if line[59:67] != '0.000000':
-                this_trans.delta_air = float(line[59:67])
+                this_trans.delta_air = HITRANParam(val=float(line[59:67]),
+                    ref=int(Iref[10:12]), name='delta_air', ierr=int(Ierr[5]))
 
             # line-mixing flag
             if line[145] != ' ':
@@ -157,6 +174,7 @@ class HITRANTransition(Transition):
             print e
             print 'The bad line was:'
             print line
+            raise       # for debugging
             return None
 
         return this_trans
@@ -201,17 +219,17 @@ class HITRANTransition(Transition):
 
         """
 
-        s_delta_air = xn_utils.to_str(self.delta_air, '%8.6f', '0.000000')
+        s_delta_air = xn_utils.prm_to_str(self.delta_air, '%8.6f', '0.000000')
         s_delta_air = s_delta_air.replace('-0.', '-.')
 
-        s_n_air = xn_utils.to_str(self.n_air, '%4.2f', ' '*4)
+        s_n_air = xn_utils.prm_to_str(self.n_air, '%4.2f', ' '*4)
         s_n_air = s_n_air.replace('-0.', '-.')
 
-        s_gamma_air = xn_utils.to_str(self.gamma_air, '%5.4f', ' '*5)
+        s_gamma_air = xn_utils.prm_to_str(self.gamma_air, '%5.4f', ' '*5)
         # XXX isn't there a better way?
         s_gamma_air = s_gamma_air.replace('0.', '.')
 
-        s_gamma_self = xn_utils.to_str(self.gamma_self, '%5.3f', ' '*5)
+        s_gamma_self = xn_utils.prm_to_str(self.gamma_self, '%5.3f', ' '*5)
 
         # missing lower energies are indicated with -1.
         s_Elower = xn_utils.to_str(self.Elower, '%10.4f', '   -1.0000')
@@ -239,9 +257,9 @@ class HITRANTransition(Transition):
 
         s_molec_id = xn_utils.to_str(self.molec_id, '%2d', '??')
         s_iso_id = xn_utils.to_str(self.iso_id, '%1d', '?')
-        s_nu = xn_utils.to_str(self.nu, '%12.6f', '?'*12)
-        s_Sw = xn_utils.to_str(self.Sw, '%10.3E', '?'*10)
-        s_A = xn_utils.to_str(self.A, '%10.3E', '?'*10)
+        s_nu = xn_utils.prm_to_str(self.nu, '%12.6f', '?'*12)
+        s_Sw = xn_utils.prm_to_str(self.Sw, '%10.3E', '?'*10)
+        s_A = xn_utils.prm_to_str(self.A, '%10.3E', '?'*10)
 
         s_trans = ('%s'*19) % (s_molec_id, s_iso_id, s_nu, s_Sw,
             s_A, s_gamma_air, s_gamma_self, s_Elower, s_n_air,
