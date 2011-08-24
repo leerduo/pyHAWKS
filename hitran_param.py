@@ -88,7 +88,8 @@ class HITRANParam(Param):
 
         if 0 < self.ierr <= 6:
             self.err = HITRANParam.abs_err_max[self.ierr]
-        self.err = None
+        else:
+            self.err = None
 
     def set_rel_err(self):
         """
@@ -99,7 +100,8 @@ class HITRANParam(Param):
 
         if 3 < self.ierr <= 8:
             self.rerr = self.val * HITRANParam.rel_err_max[self.ierr]
-        self.rerr = None
+        else:
+            self.rerr = None
 
     def get_rel_err(self, fmt=None, percent=False):
         """

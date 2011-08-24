@@ -27,3 +27,20 @@ def get_states(trans):
         return case_module, statep, statepp, multipole
 
     return None, None, None, None
+
+def get_case_module(molec_id, iso_id):
+    if molec_id in (5, 14, 15, 16, 17, 22, 36, 46):
+        return hcase_dcs
+    elif molec_id in (1, 3, 9, 21, 31, 37):
+        return hcase_nltcs
+    elif molec_id in (2, 4, 19, 23):
+        return hcase_ltcs
+
+def get_case_class(molec_id, iso_id):
+    if molec_id in (5, 14, 15, 16, 17, 22, 36, 46):
+        return hdcs.HDcs
+    elif molec_id in (1, 3, 9, 21, 31, 37):
+        return hnltcs.HNltcs
+    elif molec_id in (2, 4, 19, 23):
+        return hltcs.HLtcs
+
