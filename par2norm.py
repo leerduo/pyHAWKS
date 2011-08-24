@@ -39,25 +39,42 @@ trans_fields = [('molec_id', '%2d', '  '), ('iso_id', '%1d', ' '),
                 ('delta_air.val', '%9.6f', ' '*9),
                 ('stateIDp', '%12d', ' '*12), ('stateIDpp', '%12d', ' '*12)]
 
+def str_rep(state):
+    try:
+        s_g = '%5d' % state.g
+    except TypeError:
+        s_g = ''
+    try:
+        s_E = '%10.4f' % state.E
+    except TypeError:
+        s_E = ''
+    return '%2d%1d%s%s%s' % (state.molec_id, state.iso_id, s_E,
+            s_g, state.serialize_qns())
+
 lines = [x.rstrip() for x in open(par_path, 'r').readlines()]
-states = []
+states = {}
 out_states = open(os.path.join(out_dir, states_name), 'w')
 out_trans = open(os.path.join(out_dir, trans_name), 'w')
 start_time = time.time()
+stateID = 0
 for i,line in enumerate(lines):
     trans = HITRANTransition.parse_par_line(line)
-    if trans.statep not in states:
-        trans.stateIDp = len(states)
-        states.append(trans.statep)
+    statep_str_rep = str_rep(trans.statep)
+    if statep_str_rep not in states:
+        trans.stateIDp = stateID
+        states[statep_str_rep] = stateID
+        stateID += 1
         print >>out_states, trans.statep.to_str(state_fields)
     else:
-        trans.stateIDp = states.index(trans.statep)
-    if trans.statepp not in states:
-        trans.stateIDpp = len(states)
-        states.append(trans.statepp)
+        trans.stateIDp = states[statep_str_rep]
+    statepp_str_rep = str_rep(trans.statepp)
+    if statepp_str_rep not in states:
+        trans.stateIDpp = stateID
+        states[statepp_str_rep] = stateID
+        stateID += 1
         print >>out_states, trans.statepp.to_str(state_fields)
     else:
-        trans.stateIDpp = states.index(trans.statepp)
+        trans.stateIDpp = states[statepp_str_rep]
     print >>out_trans, trans.to_str(trans_fields)
 
 out_trans.close()
