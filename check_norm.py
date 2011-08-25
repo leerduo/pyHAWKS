@@ -20,8 +20,10 @@ from fmt_xn import *
 
 HOME = os.getenv('HOME')
 data_dir = os.path.join(HOME, 'research/HITRAN/data')
-file_stem = '05_hit08.2009-04-15'
-file_stem = '01_hit08.2009-04-15'
+#file_stem = '05_hit08.2009-04-15'
+#file_stem = '01_hit08.2009-04-15'
+file_stem = sys.argv[1]
+
 trans_file = os.path.join(data_dir, '%s.trans' % file_stem)
 states_file = os.path.join(data_dir, '%s.states' % file_stem)
 

@@ -9,7 +9,7 @@
 from lbl.dcs import Dcs
 
 class HDcs(Dcs):
-    
+
     def get_qn_attr_tuples(self, qn_name):
         """
         Return a list of (attribute-name, attribute-value) tuples for
