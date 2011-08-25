@@ -266,3 +266,30 @@ class HITRANTransition(Transition):
             s_delta_air, Vp, Vpp, Qp, Qpp, s_Ierr, s_Iref, self.flag,
             s_gp, s_gpp)
         return s_trans
+
+    def set_param(self, prm_name, prm_val, fmt):
+        """
+        Set the parameter prm_name (e.g. 'multipole', 'nu.val',
+        'nu.err', 'nu.ref'), making the conversion to int, float or string
+        according to the format fmt.
+
+        """
+
+        try:
+            #print 'self.%s = %s' % (prm_name, xn_utils.conv_str(fmt, prm_val))
+            exec('self.%s = %s' % (prm_name,
+                xn_utils.conv_str(fmt, prm_val)))
+        except ValueError:
+            exec('self.%s = None' % prm_name)
+
+    def get_param_attr(self, prm_name, attr):
+        """
+        Get the parameter attribute ('val', 'err', 'ref') for parameter
+        prm_name.
+
+        """
+
+        try:
+            return eval('self.%s.%s' % (prm_name, attr))
+        except AttributeError:
+            return None

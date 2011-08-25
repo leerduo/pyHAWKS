@@ -46,14 +46,6 @@ for line in open(states_file, 'r'):
                        s_qns=s_qns))
 print '%d states read in.' % (len(states))
 
-def conv(fmt):
-    if not fmt or fmt[-1] == 's':
-        return 'str'
-    if fmt[-1] == 'd':
-        return 'int'
-    if fmt[-1] == 'f' or fmt[-1] == 'e':
-        return 'float'
-    
 trans = []
 start_time = time.time()
 for line in open(trans_file, 'r'):
@@ -63,11 +55,8 @@ for line in open(trans_file, 'r'):
         setattr(this_trans, prm_name, HITRANParam(None))
         #eval('this_trans.%s=HITRANParam(None)' % prm_name)
     fields = line.split(',')
-    for i,(prm_name, fmt, default) in enumerate(trans_fields):
-        try:
-            exec("this_trans.%s = %s(fields[%d])" % (prm_name, conv(fmt), i))
-        except ValueError:
-            exec('this_trans.%s = None' % prm_name)
+    for i, (prm_name, fmt, default) in enumerate(trans_fields):
+        this_trans.set_param(prm_name, fmt, fields[i])
     this_trans.statep = states[this_trans.stateIDp]
     this_trans.statepp = states[this_trans.stateIDpp]
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,

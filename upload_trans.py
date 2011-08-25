@@ -13,8 +13,26 @@ import os
 import sys
 import time
 import datetime
+import argparse
 from hitran_cases import *
+from hitran_transition import HITRANTransition
+from hitran_param import HITRANParam
 import hitran_meta
+from fmt_xn import *
+import xn_utils
+
+# command line arguments:
+parser = argparse.ArgumentParser(description='Upload some transitions'
+            ' from a pair of parsed .trans, .states files')
+parser.add_argument('-u', '--upload', dest='upload', action='store_const',
+        const=True, default=False,
+        help='actually upload the data to the database')
+parser.add_argument('file_stem', metavar='<filestem>',
+        help='the root of the filenames <filestem>.states'
+             ' and <filestem>.trans')
+args = parser.parse_args()
+upload = args.upload
+file_stem = args.file_stem
 
 # Django needs to know where to find the SpeciesDB project's settings.py:
 HOME = os.getenv('HOME')
@@ -27,15 +45,17 @@ from hitranlbl.models import *
 
 HOME = os.getenv('HOME')
 data_dir = os.path.join(HOME, 'research/HITRAN/data')
-file_stem = sys.argv[1]
 
 trans_file = os.path.join(data_dir, '%s.trans' % file_stem)
 states_file = os.path.join(data_dir, '%s.states' % file_stem)
 
 # the last 10 characters of file_stem are a datestamp in ISO 8601 format
-valid_from_iso = file_stem[:-10]
+valid_from_iso = file_stem[-10:]
 # parse the datestamp YYYY-MM-DD into a datetime.date object
 valid_from = datetime.date(*[int(x) for x in valid_from_iso.split('-')])
+# the HITAN molecule ID is the first two characters of file_stem
+molecID = int(file_stem[:2])
+molec_name = Molecule.objects.filter(molecID=molecID).get().ordinary_formula
 
 states = []
 start_time = time.time()
@@ -63,9 +83,11 @@ for line in open(states_file, 'r'):
     # this_state is a hitranmeta.State object for the MySQL database
     this_state = State(iso=iso, energy=state.E, g=state.g, s_qns=state.s_qns,
                        qns_xml=state.get_qns_xml())
+    if upload:
+        this_state.save()
     states.append(this_state)
-    case = Case.objects.filter(caseID=type(state).caseID).get()
-    for qn_name in type(state).ordered_qn_list:
+    case = Case.objects.filter(caseID=state.__class__.caseID).get()
+    for qn_name in state.__class__.ordered_qn_list:
         qn_val = state.get(qn_name)
         if qn_val is None:
             continue
@@ -80,21 +102,23 @@ for line in open(states_file, 'r'):
             xml = None
         qn = Qns(case=case, state=this_state, qn_name=qn_name,
                  qn_val=str(qn_val), qn_attr=qn_attr, xml=xml)
+        if upload:
+            qn.save()
 end_time = time.time()
 print '%d states read in (%.1f secs)' % (len(states), (end_time - start_time))
 
 start_time = time.time()
+ntrans = 0
 for line in open(trans_file, 'r'):
     line = line.rstrip()
     trans = HITRANTransition()
     for prm_name in trans_prms:
+        # create the HITRANParam objects
         setattr(trans, prm_name, HITRANParam(None))
     fields = line.split(',')
     for i,(prm_name, fmt, default) in enumerate(trans_fields):
-        try:
-            exec("trans.%s = %s(fields[%d])" % (prm_name, conv(fmt), i))
-        except ValueError:
-            exec('trans.%s = None' % prm_name)
+        # set the transition attributes
+        trans.set_param(prm_name, fields[i], fmt)
     trans.statep = states[trans.stateIDp]
     trans.statepp = states[trans.stateIDpp]
     trans.case_module = hitran_meta.get_case_module(trans.molec_id,
@@ -104,11 +128,40 @@ for line in open(trans_file, 'r'):
                 isoID=trans.iso_id).get()
     statep = states[trans.stateIDp]
     statepp = states[trans.stateIDpp]
+    # this_trans is a hitranmeta.Trans object for the MySQL database
     this_trans = Trans(iso=iso, statep=statep, statepp=statepp,
             nu=trans.nu.val, Sw=trans.Sw.val, A=trans.A.val,
             multipole=trans.multipole, elower=trans.Elower, gp=trans.gp,
             gpp=trans.gpp, valid_from=valid_from)
+    ntrans += 1
+    if upload:
+        this_trans.save()
     
+    # create the hitranlbl.Prm objects for this transition's parameters
     for prm_name in trans_prms:
-        prm = Prm(trans=this_trans, name=prm_name, val=getattr(trans.
-    
+        val = trans.get_param_attr(prm_name, 'val')
+        if val is None:
+            continue
+        iref = trans.get_param_attr(prm_name, 'ref')
+        ref=None
+        if iref is not None:
+            sref = '%s-%s-%d' % (molec_name, prm_name, iref)
+            sref = sref.replace('-Sw-', '-S-') # references to Sw refer to S
+            sref = sref.replace('-A-', '-S-')  # references to A are from S
+            try:
+                ref = Ref.objects.filter(refID=sref).get()
+            except Ref.DoesNotExist:
+                if iref != 0 :
+                    # ignore the common case of reference 0 missing
+                    print 'Warning: %s does not exist' % sref
+                ref = None
+        prm = Prm(trans=this_trans, name=prm_name,
+                  val=val,
+                  err=trans.get_param_attr(prm_name, 'err'),
+                  ref=ref)
+        if upload:
+            prm.save()
+
+end_time = time.time()
+print '%d transitions read in (%s)' % (ntrans,
+            xn_utils.timed_at(end_time - start_time))
