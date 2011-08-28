@@ -105,7 +105,8 @@ for line in open(states_file, 'r'):
         if upload:
             qn.save()
 end_time = time.time()
-print '%d states read in (%.1f secs)' % (len(states), (end_time - start_time))
+print '%d states read in (%s)' % (len(states),
+            xn_utils.timed_at(end_time - start_time))
 
 start_time = time.time()
 ntrans = 0
@@ -116,9 +117,9 @@ for line in open(trans_file, 'r'):
         # create the HITRANParam objects
         setattr(trans, prm_name, HITRANParam(None))
     fields = line.split(',')
-    for i,(prm_name, fmt, default) in enumerate(trans_fields):
+    for i, output_field in enumerate(trans_fields):
         # set the transition attributes
-        trans.set_param(prm_name, fields[i], fmt)
+        trans.set_param(output_field.name, fields[i], output_field.fmt)
     trans.statep = states[trans.stateIDp]
     trans.statepp = states[trans.stateIDpp]
     trans.case_module = hitran_meta.get_case_module(trans.molec_id,

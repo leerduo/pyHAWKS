@@ -51,12 +51,13 @@ start_time = time.time()
 for line in open(trans_file, 'r'):
     line = line.rstrip()
     this_trans = HITRANTransition()
+    # create the HITRANParam objects for the trans_prms parameters
     for prm_name in trans_prms:
         setattr(this_trans, prm_name, HITRANParam(None))
         #eval('this_trans.%s=HITRANParam(None)' % prm_name)
     fields = line.split(',')
-    for i, (prm_name, fmt, default) in enumerate(trans_fields):
-        this_trans.set_param(prm_name, fmt, fields[i])
+    for i, output_field in enumerate(trans_fields):
+        this_trans.set_param(output_field.name, fields[i], output_field.fmt)
     this_trans.statep = states[this_trans.stateIDp]
     this_trans.statepp = states[this_trans.stateIDpp]
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
@@ -69,6 +70,6 @@ for line in open(trans_file, 'r'):
 print '%d transitions read in.' % (len(trans))
 
 end_time = time.time()
-print '%d transitions and %d states in %.1f secs' % (len(trans), len(states),
-            end_time - start_time)
+print '%d transitions and %d states in %s' % (len(trans), len(states),
+             xn_utils.timed_at(end_time - start_time))
     

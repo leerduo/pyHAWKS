@@ -261,9 +261,15 @@ class HITRANTransition(Transition):
         s_Sw = xn_utils.prm_to_str(self.Sw, '%10.3E', '?'*10)
         s_A = xn_utils.prm_to_str(self.A, '%10.3E', '?'*10)
 
+        # this handles the case that self.flag has been set to None when
+        # it ought to be ' '
+        s_flag = ' '
+        if self.flag:
+            s_flag = self.flag
+
         s_trans = ('%s'*19) % (s_molec_id, s_iso_id, s_nu, s_Sw,
             s_A, s_gamma_air, s_gamma_self, s_Elower, s_n_air,
-            s_delta_air, Vp, Vpp, Qp, Qpp, s_Ierr, s_Iref, self.flag,
+            s_delta_air, Vp, Vpp, Qp, Qpp, s_Ierr, s_Iref, s_flag,
             s_gp, s_gpp)
         return s_trans
 
