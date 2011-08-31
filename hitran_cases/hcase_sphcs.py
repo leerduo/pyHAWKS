@@ -32,22 +32,33 @@ def parse_qns(trans):
     save_qn(qnsp, 'v3', trans.Vp[7:9])
     save_qn(qnsp, 'v4', trans.Vp[9:11])
     save_qn(qnsp, 'n', trans.Vp[11:13])
-    save_qn(qnsp, 'vibSym', trans.Vp[13:15])
+    save_qn_str(qnsp, 'vibSym', trans.Vp[13:15])
 
     save_qn(qnspp, 'v1', trans.Vpp[3:5])
     save_qn(qnspp, 'v2', trans.Vpp[5:7])
     save_qn(qnspp, 'v3', trans.Vpp[7:9])
     save_qn(qnspp, 'v4', trans.Vpp[9:11])
     save_qn(qnspp, 'n', trans.Vpp[11:13])
-    save_qn(qnspp, 'vibSym', trans.Vpp[13:15])
+    save_qn_str(qnspp, 'vibSym', trans.Vpp[13:15])
 
     save_qn(qnsp, 'J', trans.Qp[2:5])
-    save_qn(qnsp, 'rovibSym', trans.Qp[5:7])
+    save_qn_str(qnsp, 'rovibSym', trans.Qp[5:7])
     save_qn(qnsp, 'alpha', trans.Qp[7:10])
     save_qn(qnsp, 'F', trans.Qp[10:15])
 
+    # correct the formatting on three bad lines:
+    if trans.Qpp == '   3A2  1      ':
+        print 'Qpp corrected'
+        trans.Qpp = '    3A2  1     '
+    if trans.Qpp == '   3F2  1      ':
+        print 'Qpp corrected'
+        trans.Qpp = '    3F2  1     '
+    if trans.Qpp == '   3F1  1      ':
+        print 'Qpp corrected'
+        trans.Qpp = '    3F1  1     '
+
     save_qn(qnspp, 'J', trans.Qpp[2:5])
-    save_qn(qnspp, 'rovibSym', trans.Qpp[5:7])
+    save_qn_str(qnspp, 'rovibSym', trans.Qpp[5:7])
     save_qn(qnspp, 'alpha', trans.Qpp[7:10])
     save_qn(qnspp, 'F', trans.Qpp[10:15])
 
@@ -68,31 +79,31 @@ def get_hitran_quanta(trans):
     s_v3p = qn_to_str(trans.statep, 'v3', '%2d', '  ')
     s_v4p = qn_to_str(trans.statep, 'v4', '%2d', '  ')
     s_np = qn_to_str(trans.statep, 'n', '%2d', '  ')
-    s_vibsymp = qn_to_str(trans.statep, 'vibSym', '%2s', '  ')
+    s_vibsymp = qn_to_str_ljust(trans.statep, 'vibSym', 2, '  ')
     
     s_v1pp = qn_to_str(trans.statepp, 'v1', '%2d', '  ')
     s_v2pp = qn_to_str(trans.statepp, 'v2', '%2d', '  ')
     s_v3pp = qn_to_str(trans.statepp, 'v3', '%2d', '  ')
     s_v4pp = qn_to_str(trans.statepp, 'v4', '%2d', '  ')
     s_npp = qn_to_str(trans.statepp, 'n', '%2d', '  ')
-    s_vibsympp = qn_to_str(trans.statepp, 'vibSym', '%2s', '  ')
+    s_vibsympp = qn_to_str_ljust(trans.statepp, 'vibSym', 2, '  ')
 
     Vp = '   %s%s%s%s%s%s' % (s_v1p, s_v2p, s_v3p, s_v4p, s_np, s_vibsymp)
     Vpp = '   %s%s%s%s%s%s'%(s_v1pp, s_v2pp, s_v3pp, s_v4pp, s_npp, s_vibsympp)
 
     s_Jp = qn_to_str(trans.statep, 'J', '%3d', '   ')
-    s_rovibsymp = qn_to_str(trans.statep, 'rovibSym', '%2s', '  ')
+    s_rovibsymp = qn_to_str_ljust(trans.statep, 'rovibSym', 2, '  ')
     s_alphap = qn_to_str(trans.statep, 'alpha', '%3d', '   ')
     # for methane-h4, the only hyperfine coupling is with (13C) for which
     # I=1 and therefore, F is an integer
-    s_Fp = qn_to_str(trans.statep, 'F', '%3d', ' '*5)
+    s_Fp = qn_to_str(trans.statep, 'F', '%5d', ' '*5)
 
     s_Jpp = qn_to_str(trans.statepp, 'J', '%3d', '   ')
-    s_rovibsympp = qn_to_str(trans.statepp, 'rovibSym', '%2s', '  ')
+    s_rovibsympp = qn_to_str_ljust(trans.statepp, 'rovibSym', 2, '  ')
     s_alphapp = qn_to_str(trans.statepp, 'alpha', '%3d', '   ')
     # for methane-h4, the only hyperfine coupling is with (13C) for which
     # I=1 and therefore, F is an integer
-    s_Fpp = qn_to_str(trans.statepp, 'F', '%3d', ' '*5)
+    s_Fpp = qn_to_str(trans.statepp, 'F', '%5d', ' '*5)
 
     Qp = '  %s%s%s%s' % (s_Jp, s_rovibsymp, s_alphap, s_Fp)
     Qpp = '  %s%s%s%s' % (s_Jpp, s_rovibsympp, s_alphapp, s_Fpp)

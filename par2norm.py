@@ -56,6 +56,9 @@ start_time = time.time()
 stateID = 0
 for i,line in enumerate(lines):
     trans = HITRANTransition.parse_par_line(line)
+    if trans is None:
+        # blank or comment line
+        continue
 
     statep_str_rep = str_rep(trans.statep)
     if statep_str_rep not in states:

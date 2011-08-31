@@ -18,6 +18,7 @@ from hitran_param import HITRANParam
 import hitran_meta
 import xn_utils
 from fmt_xn import *
+from correct_par import *
 
 HOME = os.getenv('HOME')
 data_dir = os.path.join(HOME, 'research/HITRAN/data')
@@ -27,6 +28,7 @@ file_stem = sys.argv[1]
 
 trans_file = os.path.join(data_dir, '%s.trans' % file_stem)
 states_file = os.path.join(data_dir, '%s.states' % file_stem)
+corrections_file = os.path.join(data_dir, '%s.corrections' % file_stem)
 
 states = []
 for line in open(states_file, 'r'):
@@ -49,7 +51,11 @@ print '%d states read in.' % (len(states))
 
 trans = []
 start_time = time.time()
+line_no = 0
+ncorrections = 0
+co = open(corrections_file, 'w')
 for line in open(trans_file, 'r'):
+    line_no += 1
     line = line.rstrip()
     this_trans = HITRANTransition()
     # create the HITRANParam objects for the trans_prms parameters
@@ -64,13 +70,22 @@ for line in open(trans_file, 'r'):
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
                         this_trans.iso_id)
     if not this_trans.validate_as_par():
-        print this_trans.par_line,'\nfailed to validate! I produced:'
-        print this_trans.get_par_str()
-        sys.exit(1)
+        this_trans.old_par_line = this_trans.par_line
+        this_trans.par_line = correct_par(this_trans)
+        if this_trans.validate_as_par():
+            print >>co, '%d-%s' % (line_no, this_trans.old_par_line)
+            print >>co, '%d+%s' % (line_no, this_trans.par_line)
+            ncorrections += 1
+        else:
+            print this_trans.par_line,'\nfailed to validate! I produced:'
+            print this_trans.get_par_str()
+            sys.exit(1)
     trans.append(this_trans)
+co.close()
 print '%d transitions read in.' % (len(trans))
 
 end_time = time.time()
 print '%d transitions and %d states in %s' % (len(trans), len(states),
              xn_utils.timed_at(end_time - start_time))
-    
+print '%d corrections made to original .par file saved as %s'\
+            % (ncorrections, corrections_file)
