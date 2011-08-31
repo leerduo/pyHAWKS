@@ -33,4 +33,4 @@ class HLtcs(Ltcs):
         if self.molec_id == 2 and qn_name == 'r':
             return [('name', 'Fermi resonance rank'),]
         else:
-            return get_qn_attr_tuples(self, qn_name)
+            return self.get_qn_attr_tuples(qn_name)
