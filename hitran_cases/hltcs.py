@@ -20,9 +20,7 @@ class HLtcs(Ltcs):
         """
 
         if self.molec_id == 2:  # CO2
-            if qn_name == 'r':  # Fermi resonance ranking index
-                return [('name', 'ranking index'),]
-            elif qn_name == 'F':    # hyperfine coupling with 17O
+            if qn_name == 'F':    # hyperfine coupling with 17O
                 return [('nuclearSpinRef','O1'),]
 
         elif self.molec_id == 23 and qn_name == 'F':  # HCN
@@ -30,3 +28,9 @@ class HLtcs(Ltcs):
             return [('nuclearSpinRef','N1'),]
 
         return []
+
+    def get_qn_xml_attr_tuples(self, qn_name):
+        if self.molec_id == 2 and qn_name == 'r':
+            return [('name', 'Fermi resonance rank'),]
+        else:
+            return get_qn_attr_tuples(self, qn_name)

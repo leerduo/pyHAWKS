@@ -16,6 +16,7 @@ from hitran_cases import *
 from hitran_transition import HITRANTransition
 from hitran_param import HITRANParam
 import hitran_meta
+import xn_utils
 from fmt_xn import *
 
 HOME = os.getenv('HOME')

@@ -55,6 +55,7 @@ def parse_qns(trans):
     # rotational quantum number, J
     br = trans.Qpp[5]   # branch designation: 'P' or 'R'
     Jpp = save_qn(qnspp, 'J', trans.Qpp[6:9])
+    Jp = None
     if Jpp is not None and br:
         Jp = Jpp + branch[br]
         qnsp['J'] = Jp
@@ -63,8 +64,16 @@ def parse_qns(trans):
     kronig_paritypp = trans.Qpp[9]
     if kronig_paritypp != ' ':
         qnspp['kronigParity'] = kronig_paritypp
-        # the only transitions in the database are e->e and f->f
-        qnsp['kronigParity'] = kronig_paritypp
+        if Jpp is not None:
+            # total parity for the lower state, paritypp
+            paritypp = xn_utils.kp_to_par(kronig_paritypp, Jpp)
+            qnspp['parity'] = paritypp
+            if Jp is not None:
+                # we only have electric dipole transitions: '+' <-> '-'
+                parityp = xn_utils.other_par(paritypp)
+                # deduce and save Kronig parity
+                kronig_parityp = xn_utils.par_to_kp(parityp, Jp)
+                qnsp['kronigParity'] = kronig_parityp
 
     # look for hyperfine quantum numbers, Fp and Fpp, which may be integer
     # or half-integer:

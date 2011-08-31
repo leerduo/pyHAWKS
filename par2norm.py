@@ -20,6 +20,10 @@ HOME = os.getenv('HOME')
 par_dir = os.path.join(HOME, 'research/HITRAN/HITRAN2008/HITRAN2008/'\
                              'By-Molecule/Uncompressed-files')
 
+# the output files will be:
+# $HOME/research/HITRAN/data/<par_name>-YYY-MM-DD.states and .trans
+# where <par_name> is <molec_ID>_hit08 and is appended with the modification
+# date of the original .par file
 out_dir = os.path.join(HOME, 'research/HITRAN/data')
 molec_id = int(sys.argv[1])
 par_name = '%02d_hit08.par' % molec_id
@@ -29,8 +33,8 @@ trans_name = '%s.%s.trans' % (par_name[:-4], mod_date)
 states_name = '%s.%s.states' % (par_name[:-4], mod_date)
 print '%s -> (%s, %s)' % (par_name, trans_name, states_name)
 
-
 def str_rep(state):
+    """ A helper function to return a string representation of the state."""
     try:
         s_g = '%5d' % state.g
     except TypeError:
@@ -42,6 +46,8 @@ def str_rep(state):
     return '%2d%1d%s%s%s' % (state.molec_id, state.iso_id, s_E,
             s_g, state.serialize_qns())
 
+# read the lines and rstrip them of the EOL characters. We don't lstrip
+# because we keep the space in front of molecIDs 1-9
 lines = [x.rstrip() for x in open(par_path, 'r').readlines()]
 states = {}
 out_states = open(os.path.join(out_dir, states_name), 'w')
@@ -50,8 +56,11 @@ start_time = time.time()
 stateID = 0
 for i,line in enumerate(lines):
     trans = HITRANTransition.parse_par_line(line)
+
     statep_str_rep = str_rep(trans.statep)
     if statep_str_rep not in states:
+        # we've not seen this upper state before: save it and write it
+        # to out_states
         trans.stateIDp = stateID
         states[statep_str_rep] = stateID
         stateID += 1
@@ -60,12 +69,15 @@ for i,line in enumerate(lines):
         trans.stateIDp = states[statep_str_rep]
     statepp_str_rep = str_rep(trans.statepp)
     if statepp_str_rep not in states:
+        # we've not seen this lower state before: save it and write it
+        # to out_states
         trans.stateIDpp = stateID
         states[statepp_str_rep] = stateID
         stateID += 1
         print >>out_states, trans.statepp.to_str(state_fields, ',')
     else:
         trans.stateIDpp = states[statepp_str_rep]
+
     print >>out_trans, trans.to_str(trans_fields, ',')
 
 out_trans.close()

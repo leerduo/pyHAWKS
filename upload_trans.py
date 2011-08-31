@@ -132,8 +132,8 @@ for line in open(trans_file, 'r'):
     # this_trans is a hitranmeta.Trans object for the MySQL database
     this_trans = Trans(iso=iso, statep=statep, statepp=statepp,
             nu=trans.nu.val, Sw=trans.Sw.val, A=trans.A.val,
-            multipole=trans.multipole, elower=trans.Elower, gp=trans.gp,
-            gpp=trans.gpp, valid_from=valid_from)
+            multipole=trans.multipole, Elower=trans.Elower, gp=trans.gp,
+            gpp=trans.gpp, valid_from=valid_from, par_line=trans.par_line)
     ntrans += 1
     if upload:
         this_trans.save()

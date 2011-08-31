@@ -14,4 +14,5 @@ __all__ = [#'molecule_globals',
            'hcase_dcs', 'hdcs',
            'hcase_nltcs', 'hnltcs',
            'hcase_ltcs', 'hltcs',
+           'hcase_hundb', 'hhundb',
           ]

@@ -17,6 +17,8 @@ def get_states(trans):
         case_module, CaseClass = hcase_nltcs, hnltcs.HNltcs
     elif trans.molec_id in (2, 4, 19, 23):
         case_module, CaseClass = hcase_ltcs, hltcs.HLtcs
+    elif trans.molec_id == 7:
+        case_module, CaseClass = hcase_hundb, hhundb.HHundB
 
     if case_module and CaseClass:
         qnsp, qnspp, multipole = case_module.parse_qns(trans)
@@ -35,6 +37,8 @@ def get_case_module(molec_id, iso_id):
         return hcase_nltcs
     elif molec_id in (2, 4, 19, 23):
         return hcase_ltcs
+    elif molec_id == 7:
+        return hcase_hundb
 
 def get_case_class(molec_id, iso_id):
     if molec_id in (5, 14, 15, 16, 17, 22, 36, 46):
@@ -43,4 +47,6 @@ def get_case_class(molec_id, iso_id):
         return hnltcs.HNltcs
     elif molec_id in (2, 4, 19, 23):
         return hltcs.HLtcs
+    elif molec_id == 7:
+        return hhundb.HHundB
 
