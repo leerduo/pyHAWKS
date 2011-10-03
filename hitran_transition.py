@@ -114,9 +114,10 @@ class HITRANTransition(Transition):
                 ref=int(Iref[4:6]), name='gamma_air', ierr=int(Ierr[2]),
                 relative=True)
             # self-broadened HWHM at 296 K (cm-1.atm-1)
-            this_trans.gamma_self = HITRANParam(val=float(line[40:45]),
-                ref=int(Iref[6:8]), name='gamma_self', ierr=int(Ierr[3]),
-                relative=True)
+            if line[40:45] != '0.000':
+                this_trans.gamma_self = HITRANParam(val=float(line[40:45]),
+                    ref=int(Iref[6:8]), name='gamma_self', ierr=int(Ierr[3]),
+                    relative=True)
             # lower-state energy (cm-1)
             this_trans.Elower = float(line[45:55])
             # missing lower state energies are indicated by -1.
@@ -229,7 +230,7 @@ class HITRANTransition(Transition):
         # XXX isn't there a better way?
         s_gamma_air = s_gamma_air.replace('0.', '.')
 
-        s_gamma_self = xn_utils.prm_to_str(self.gamma_self, '%5.3f', ' '*5)
+        s_gamma_self = xn_utils.prm_to_str(self.gamma_self, '%5.3f', '0.000')
 
         # missing lower energies are indicated with -1.
         s_Elower = xn_utils.to_str(self.Elower, '%10.4f', '   -1.0000')
