@@ -19,11 +19,15 @@ import hitran_meta
 import xn_utils
 from fmt_xn import *
 from correct_par import *
+from HITRAN_configs import dbname
 
 HOME = os.getenv('HOME')
-data_dir = os.path.join(HOME, 'research/HITRAN/data')
-#file_stem = '05_hit08.2009-04-15'
-#file_stem = '01_hit08.2009-04-15'
+if dbname.lower() == 'hitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data')
+elif dbname.lower() == 'minihitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
+elif dbname.lower() == 'microhitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
 file_stem = sys.argv[1]
 
 trans_file = os.path.join(data_dir, '%s.trans' % file_stem)

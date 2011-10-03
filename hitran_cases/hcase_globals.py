@@ -13,8 +13,8 @@ import xn_utils
 
 # a dictionary of branch designations, to and from the corresponding DeltaJ:
 # e.g. Jp = Jpp + branch['R'] means Jp = Jpp + 1 and branch[-1] = 'P'
-branch = {	'M': -4, 'O': -2, 'P': -1, 'Q': 0, 'R': 1, 'S': 2, 'U': 4,
-		-4: 'M', -2: 'O', -1: 'P', 0: 'Q', 1: 'R', 2: 'S', 4: 'U'}
+branch = { 'M': -4, 'O': -2, 'P': -1, 'Q': 0, 'R': 1, 'S': 2, 'U': 4,
+		   -4: 'M', -2: 'O', -1: 'P', 0: 'Q', 1: 'R', 2: 'S', 4: 'U'}
 
 vib_qn_patt = '^v(\d+)$'    # regexp matching vibrational quantum number name
 
@@ -40,11 +40,33 @@ def save_qn_str(qns, qn_name, qn_str):
     and return None; otherwise return whatever was stored.
 
     """
+    if qn_str is None:
+        return None
     qn = qn_str.strip()
     if qn:
         qns[qn_name] = qn
         return qn
     return None
+
+def qn_to_frac(qns, qn_name, s_default):
+    """
+    Return the value of qns, formatted as a fraction, or s_default if this
+    isn't possible. NB we only deal with half-integral numbers and there
+    is no control over the size of the string returned.
+
+    """
+
+    if qns is None:
+        return s_default
+    qn_val = qns.get(qn_name)
+    if qn_val is None:
+        return s_default
+    num = 2 * qn_val
+    if qn_val % 2:
+        # half odd-integer
+        return '%d/2' % num
+    # integer
+    return str(num)
 
 def qn_to_str(qns, qn_name, fmt, s_default):
     """

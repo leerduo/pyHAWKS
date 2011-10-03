@@ -39,6 +39,12 @@ def parse_qns(trans):
     if trans.molec_id == 11:    # vibrational inversion for NH3
         save_qn_str(qnsp, 'vibInv', trans.Vp[14])
         save_qn_str(qnspp, 'vibInv', trans.Vpp[14])
+        if trans.iso_id == 2 and trans.Vp[14] == ' ':   # (15N)H3
+            # some of the lower states of (15N)H3 use +/- instead of a/s
+            s_vibinvpp = trans.Qpp[10]
+            s_vibinvpp = s_vibinvpp.replace('+', 's')
+            s_vibinvpp = s_vibinvpp.replace('-', 'a')
+            save_qn_str(qnspp, 'vibInv', s_vibinvpp)
         # we only need vibrational symmetry for the upper state because
         # only excited levels such as 2v4 have more than one possible
         # symmetry and these don't serve as lower levels in HITRAN
@@ -48,11 +54,13 @@ def parse_qns(trans):
         save_qn_str(qnspp, 'vibSym', trans.Qpp[8:10])
 
     save_qn(qnsp, 'J', trans.Qp[:3])
-    save_qn(qnsp, 'K', trans.Qp[3:6])
+    if trans.Qp[3:6] != ' -1':   # -1 means unknown K value
+        save_qn(qnsp, 'K', trans.Qp[3:6])
     save_qn(qnsp, 'l', trans.Qp[6:8])
 
     save_qn(qnspp, 'J', trans.Qpp[:3])
-    save_qn(qnspp, 'K', trans.Qpp[3:6])
+    if trans.Qpp[3:6] != ' -1':   # -1 means unknown K value
+        save_qn(qnspp, 'K', trans.Qpp[3:6])
     save_qn(qnspp, 'l', trans.Qpp[6:8])
 
     return qnsp, qnspp, 'E1'
@@ -75,7 +83,10 @@ def get_hitran_quanta(trans):
     s_Jp = qn_to_str(trans.statep, 'J', '%3d', '   ')
     s_Kp = qn_to_str(trans.statep, 'K', '%3d', '   ')
     s_vibinvp = qn_to_str(trans.statep, 'vibInv', '%1s', ' ')
-    s_vibsymp = qn_to_str_ljust(trans.statep, 'vibSym', 2, '  ')
+    if trans.molec_id == 11:    # NH3
+        s_vibsymp = qn_to_str_ljust(trans.statep, 'vibSym', 1, ' ')
+    else:
+        s_vibsymp = qn_to_str_ljust(trans.statep, 'vibSym', 2, '  ')
     
     s_v1pp = qn_to_str(trans.statepp, 'v1', '%2d', '  ')
     s_v2pp = qn_to_str(trans.statepp, 'v2', '%2d', '  ')
@@ -87,10 +98,12 @@ def get_hitran_quanta(trans):
     s_vibinvpp = qn_to_str(trans.statepp, 'vibInv', '%1s', ' ')
     s_vibsympp = qn_to_str_ljust(trans.statepp, 'vibSym', 2, '  ')
 
-    Vp  = '     %s%s%s%s %s' % (s_v1p, s_v2p, s_v3p, s_v4p, s_vibinvp)
-    Vpp = '     %s%s%s%s %s' % (s_v1pp, s_v2pp, s_v3pp, s_v4pp, s_vibinvpp)
 
     if trans.molec_id == 11:    # NH3
+        # vibrational symmetry of the upper state is in the Vp field for NH3
+        Vp  = '     %s%s%s%s%s%s' % (s_v1p, s_v2p, s_v3p, s_v4p, s_vibsymp,
+                                     s_vibinvp)
+        Vpp = '     %s%s%s%s %s' % (s_v1pp, s_v2pp, s_v3pp, s_v4pp, s_vibinvpp)
         Qp  = '%s%s%s  %s    ' % (s_Jp, s_Kp, s_lp, s_vibinvp) 
         Qpp = '%s%s%s  %s    ' % (s_Jpp, s_Kpp, s_lpp, s_vibinvpp)
         # unassigned lower states don't quote the inversion symmetry,
@@ -99,6 +112,8 @@ def get_hitran_quanta(trans):
         if sQpp in ('a', 's'):
             Qpp = ' '*15
     elif trans.molec_id == 28:  # PH3
+        Vp  = '     %s%s%s%s %s' % (s_v1p, s_v2p, s_v3p, s_v4p, s_vibinvp)
+        Vpp = '     %s%s%s%s %s' % (s_v1pp, s_v2pp, s_v3pp, s_v4pp, s_vibinvpp)
         Qpp = '%s%s%s%s     ' % (s_Jpp, s_Kpp, s_lpp, s_vibsympp)
         Qp  = '%s%s%s%s     ' % (s_Jp, s_Kp, s_lp, s_vibsymp)
 

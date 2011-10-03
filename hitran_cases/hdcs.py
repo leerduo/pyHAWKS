@@ -37,4 +37,5 @@ class HDcs(Dcs):
             # HITRAN database; this nucleus is known as 'I1'
             return [('nuclearSpinRef', 'I1'),]
 
+        print 'Warning! unbound F quantum number'
         return []

@@ -5,7 +5,7 @@
 # Department of Physics and Astronomy, University College London
 # christian.hill@ucl.ac.uk
 #
-# The hcase_nltcs module, with methods for writing and parsing the quantum
+# The hcase_hundb module, with methods for writing and parsing the quantum
 # numbers of diatomic molecules described well by the Hund's case (b)
 # coupling scheme from the HITRAN database.
 # Various things are imported from the hcase_globals module.
@@ -107,9 +107,11 @@ def get_hitran_quanta(trans):
 
     # for O2, the Qpp[14] field holds a character identifying the transition
     # multipole ('d', 'q' or 'm'):
-    sympp='d'
-    if trans.multipole=='E2': sympp='q'    # electric quadrupole
-    if trans.multipole=='M1': sympp='m'    # magnetic dipole
+    sympp = 'd'
+    if trans.multipole == 'E2': 
+        sympp = 'q'    # electric quadrupole
+    elif trans.multipole == 'M1':
+        sympp = 'm'    # magnetic dipole
 
     Qpp = ' %s%s%s%s%s%s' % (brN, s_Npp, brJ, s_Jpp, s_Fpp, sympp)
     Qp = '          %s' % s_Fp

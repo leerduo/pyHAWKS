@@ -15,20 +15,36 @@ import time
 import datetime
 from hitran_transition import HITRANTransition
 from fmt_xn import *
+from HITRAN_configs import dbname
 
-HOME = os.getenv('HOME')
-par_dir = os.path.join(HOME, 'research/HITRAN/HITRAN2008/HITRAN2008/'\
-                             'By-Molecule/Uncompressed-files')
-
-# the output files will be:
-# $HOME/research/HITRAN/data/<par_name>-YYY-MM-DD.states and .trans
-# where <par_name> is <molec_ID>_hit08 and is appended with the modification
-# date of the original .par file
-out_dir = os.path.join(HOME, 'research/HITRAN/data')
 molec_id = int(sys.argv[1])
 par_name = '%02d_hit08.par' % molec_id
+
+HOME = os.getenv('HOME')
+# whether we're using hitran or minihitran, get the last modified date from
+# the original par file
+orig_par_dir = os.path.join(HOME, 'research/HITRAN/HITRAN2008/HITRAN2008/'\
+                                  'By-Molecule/Uncompressed-files')
+orig_par_path = os.path.join(orig_par_dir, par_name)
+mod_date = datetime.date.fromtimestamp(os.path.getmtime(
+                            orig_par_path)).isoformat()
+
+if dbname.lower() == 'hitran':
+    par_dir = orig_par_dir
+    out_dir = os.path.join(HOME, 'research/HITRAN/data')
+elif dbname.lower() == 'minihitran':
+    par_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
+    out_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
+elif dbname.lower() == 'microhitran':
+    par_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
+    out_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
 par_path = os.path.join(par_dir, par_name)
-mod_date = datetime.date.fromtimestamp(os.path.getmtime(par_path)).isoformat()
+
+# the output files will be:
+# $HOME/research/HITRAN/data/<par_name>-YYYY-MM-DD.states and .trans or
+# $HOME/research/HITRAN/data/minihitran/<par_name>-YYYY-MM-DD.states and .trans
+# where <par_name> is <molec_ID>_hit08 and is appended with the modification
+# date of the original .par file
 trans_name = '%s.%s.trans' % (par_name[:-4], mod_date)
 states_name = '%s.%s.states' % (par_name[:-4], mod_date)
 print '%s -> (%s, %s)' % (par_name, trans_name, states_name)

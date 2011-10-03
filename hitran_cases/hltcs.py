@@ -19,14 +19,18 @@ class HLtcs(Ltcs):
 
         """
 
+        if qn_name != 'F':
+            return []
+
         if self.molec_id == 2:  # CO2
-            if qn_name == 'F':    # hyperfine coupling with 17O
-                return [('nuclearSpinRef','O1'),]
+            # hyperfine coupling with 17O
+            return [('nuclearSpinRef','O1'),]
 
         elif self.molec_id == 23 and qn_name == 'F':  # HCN
             # hyperfine coupling with 14N
             return [('nuclearSpinRef','N1'),]
 
+        print 'Warning! unbound F quantum number'
         return []
 
     def get_qn_xml_attr_tuples(self, qn_name):

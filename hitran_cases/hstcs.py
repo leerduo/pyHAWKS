@@ -15,7 +15,7 @@ class HStcs(Stcs):
     # this 'case'
     ordered_qn_list = ['ElecStateLabel', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6',
                        'v7', 'v8', 'v9', 'v10', 'v11', 'v12',
-                       'l', 'vibInv', 'vibSym', 'J', 'K', 'rovibSym']
+                       'l', 'vibInv', 'vibSym', 'J', 'K', 'rovibSym', 'F']
 
     # the Python types for the quantum numbers
     qn_types = {'ElecStateLabel': str,
@@ -23,7 +23,7 @@ class HStcs(Stcs):
                 'v1': int, 'v2': int, 'v3': int, 'v4': int,
                 'v5': int, 'v6': int, 'v7': int, 'v8': int,
                 'v9': int, 'v10': int, 'v11': int, 'v12': int,
-                'l': int,
+                'l': int, 'F': float,
                 'vibInv': str,
                 'vibSym': str,
                 'rovibSym': str}
@@ -35,6 +35,7 @@ class HStcs(Stcs):
 
         """
 
+        case_prefix = 'stcs'
         qn = self.qns.get(qn_name)
         if qn is None:
             return ''
@@ -63,7 +64,7 @@ class HStcs(Stcs):
 
         if qn_name == 'F':
             if self.molec_id == 24: # CH3Cl
-                return[('nuclearSpinRef', 'Cl1'),]
+                return [('nuclearSpinRef', 'Cl1'),]
             else:
                 print 'warning! unbound F quantum number'
 
@@ -71,5 +72,11 @@ class HStcs(Stcs):
         m = re.match(vib_qn_patt, qn_name)
         if m:
             return [('mode', '%s' % m.group(1)),]
+
+        if self.molec_id == 27:   # C2H6
+            if qn_name == 'rovibSym':
+                # symmetry species are given in the G18+ extended
+                # permutation-inversion group
+                return [('group', 'G18plus'),]
 
         return []

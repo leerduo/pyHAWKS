@@ -20,6 +20,7 @@ from hitran_param import HITRANParam
 import hitran_meta
 from fmt_xn import *
 import xn_utils
+from HITRAN_configs import dbname
 
 # command line arguments:
 parser = argparse.ArgumentParser(description='Upload some transitions'
@@ -34,7 +35,7 @@ args = parser.parse_args()
 upload = args.upload
 file_stem = args.file_stem
 
-# Django needs to know where to find the SpeciesDB project's settings.py:
+# Django needs to know where to find the HITRAN project's settings.py:
 HOME = os.getenv('HOME')
 hitran_path = os.path.join(HOME,'research/VAMDC/HITRAN/django/HITRAN')
 sys.path.append(hitran_path)
@@ -43,8 +44,14 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from hitranmeta.models import *
 from hitranlbl.models import *
 
-HOME = os.getenv('HOME')
-data_dir = os.path.join(HOME, 'research/HITRAN/data')
+print 'using database:', dbname
+
+if dbname.lower() == 'hitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data')
+elif dbname.lower() == 'minihitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
+elif dbname.lower() == 'microhitran':
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
 
 trans_file = os.path.join(data_dir, '%s.trans' % file_stem)
 states_file = os.path.join(data_dir, '%s.states' % file_stem)
@@ -86,7 +93,7 @@ for line in open(states_file, 'r'):
     if upload:
         this_state.save()
     states.append(this_state)
-    case = Case.objects.filter(caseID=state.__class__.caseID).get()
+    case = Case.objects.filter(pk=state.__class__.caseID).get()
     for qn_name in state.__class__.ordered_qn_list:
         qn_val = state.get(qn_name)
         if qn_val is None:
@@ -147,6 +154,7 @@ for line in open(trans_file, 'r'):
         ref=None
         if iref is not None:
             sref = '%s-%s-%d' % (molec_name, prm_name, iref)
+            sref = sref.replace('+', 'p')  # we can't use '+' in XML attributes
             sref = sref.replace('-Sw-', '-S-') # references to Sw refer to S
             sref = sref.replace('-A-', '-S-')  # references to A are from S
             try:

@@ -1,35 +1,37 @@
-# Christian Hill, 22/8/11
+# Christian Hill, 18/9/11
 # Department of Physics and Astronomy, University College London
 # christian.hill@ucl.ac.uk
 #
-# The HSphcs class, derived from the base Sphcs class, with methods for
-# writing and parsing the quantum numbers of closed-shell spherical top
+# The HLpcs class, derived from the base Lpcs class, with methods for
+# writing and parsing the quantum numbers of closed-shell linear
 # molecules from the HITRAN database.
 
-from lbl.sphcs import Sphcs
+from lbl.lpcs import Lpcs
+from hcase_globals import vib_qn_patt
+import re
 
-class HSphcs(Sphcs):
+class HLpcs(Lpcs):
     # the canonical order for outputting quantum numbers for states of
     # this 'case'
-    ordered_qn_list = ['ElecStateLabel', 'v1', 'v2', 'v3', 'v4', 'vibSym', 'J',
-                       'rovibSym', 'F', 'n', 'alpha']
+    ordered_qn_list = ['ElecStateLabel', 'v1', 'v2', 'v3', 'v4', 'v5',
+                       'l', 'vibInv', 'vibRefl', 'J', 'F', 'r', 'parity',
+                       'kronigParity']
+
     # the Python types for the quantum numbers
     qn_types = {'ElecStateLabel': str,
                 'J': int,
                 'v1': int, 'v2': int, 'v3': int, 'v4': int,
-                'vibSym': str,
-                'rovibSym': str,
-                'n': int, 'alpha': int,
-                'F': float}
-    
+                'v5': int, 'l': int, 'F': float, 'r': int, 'vibInv': str,
+                'vibRefl': str, 'parity': str, 'kronigParity': str}
+
     def get_qn_xml(self, qn_name):
         """
         Make and return an xml representation of the quantum number qn_name,
-        valid to the XML Schema of the 'sphcs' case.
+        valid to the XML Schema of the 'asymcs' case.
 
         """
 
-        case_prefix = 'sphcs'
+        case_prefix = 'lpcs'
         qn = self.qns.get(qn_name)
         if qn is None:
             return ''
@@ -38,10 +40,9 @@ class HSphcs(Sphcs):
         # common case that there are no attributes
         if xml_attrs:
             # rename qn_name to its XML tag name if different
-            if qn_name in ('v1', 'v2', 'v3', 'v4'):
+            m = re.match(vib_qn_patt, qn_name)
+            if m:
                 qn_name = 'vi'
-            elif qn_name in ('n', 'alpha'):
-                qn_name = 'r'
             return '<%s:%s %s>%s</%s:%s>' % (case_prefix, qn_name,
                 xml_attrs, str(qn), case_prefix, qn_name)
         # no attributes:
@@ -57,13 +58,15 @@ class HSphcs(Sphcs):
 
         """
 
-        # For now, deal only with methane
-        if qn_name in ('v1', 'v2', 'v3', 'v4'):
-            return [('mode', '%s' % qn_name[1]),]
-        elif qn_name == 'n':  # vibrational ranking index
-            return [('name', 'n'),]
-        elif qn_name == 'alpha':  # rotational ranking index
-            return [('name', 'alpha'),]
-        elif qn_name == 'F':
-            print 'Warning! unbound F quantum number'
+        if qn_name == 'F':
+            print 'warning! unbound F quantum number'
+
+        # match to 'v1', 'v2', 'v12', etc.
+        m = re.match(vib_qn_patt, qn_name)
+        if m:
+            return [('mode', '%s' % m.group(1)),]
+
+        if qn_name == 'r':
+            return [('name', 'l-type resonance rank'),]
+
         return []

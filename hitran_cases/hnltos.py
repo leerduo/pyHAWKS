@@ -1,14 +1,14 @@
-# Christian Hill, 22/8/11
+# Christian Hill, 11/9/11
 # Department of Physics and Astronomy, University College London
 # christian.hill@ucl.ac.uk
 #
-# The HNltcs class, derived from the base Nltcs class, with methods for
-# writing and parsing the quantum numbers of closed-shell non-linear triatomic
+# The HNltos class, derived from the base Nltos class, with methods for
+# writing and parsing the quantum numbers of open-shell non-linear triatomic
 # molecules from the HITRAN database.
 
-from lbl.nltcs import Nltcs
+from lbl.nltos import Nltos
 
-class HNltcs(Nltcs):
+class HNltos(Nltos):
     
     def get_qn_attr_tuples(self, qn_name):
         """
@@ -22,11 +22,12 @@ class HNltcs(Nltcs):
         if qn_name != 'F':
             return []
 
-        if self.molec_id == 3:  # O3
-            if self.iso_id == 4:    # (16O)(16O)(17O)
-                return [('nuclearSpinRef', 'O3'),]
-            if self.iso_id == 5:    # (16O)(17O)(16O)
-                return [('nuclearSpinRef', 'O2'),]
+        if self.molec_id == 10:  # NO2
+            # hyperfine coupling with 14N
+            return [('nuclearSpinRef', 'N1'),]
+        if self.molec_id == 33:  # HO2
+            # hyperfine coupling with 1H
+            return [('nuclearSpinRef', 'H1'),]
 
         print 'Warning! unbound F quantum number'
         return []
