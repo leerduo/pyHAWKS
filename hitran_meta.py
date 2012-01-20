@@ -25,6 +25,8 @@ def get_states(trans):
             case_module, CaseClass = hcase_sphcs, hsphcs.HSphcs
         elif trans.iso_id in (3,4):
             case_module, CaseClass = hcase_stcs, hstcs.HStcs
+    elif trans.molec_id == 42:
+            case_module, CaseClass = hcase_sphcs, hsphcs.HSphcs
     elif trans.molec_id == 7:
         case_module, CaseClass = hcase_hundb, hhundb.HHundB
     elif trans.molec_id in (11, 28):
@@ -63,6 +65,8 @@ def get_case_module(molec_id, iso_id):
             return hcase_sphcs
         elif iso_id in (3, 4):
             return hcase_stcs
+    elif molec_id == 42:
+            return hcase_sphcs
     elif molec_id == 7:
         return hcase_hundb
     elif molec_id in (11, 28):
@@ -93,6 +97,8 @@ def get_case_class(molec_id, iso_id):
             return hsphcs.HSphcs
         elif iso_id in (3, 4):
             return hstcs.HStcs
+    elif molec_id == 42:
+            return hsphcs.HSphcs
     elif molec_id == 7:
         return hhundb.HHundB
     elif molec_id in (11, 24, 27, 28, 39, 40, 41):

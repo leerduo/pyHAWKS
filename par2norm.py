@@ -26,18 +26,21 @@ HOME = os.getenv('HOME')
 orig_par_dir = os.path.join(HOME, 'research/HITRAN/HITRAN2008/HITRAN2008/'\
                                   'By-Molecule/Uncompressed-files')
 orig_par_path = os.path.join(orig_par_dir, par_name)
+if not os.path.exists(orig_par_path):
+    orig_par_path=orig_par_path.replace('By-Molecule/Uncompressed-files', 'Supplemental')
+    if not os.path.exists(orig_par_path):
+        print "couldn't stat path %s" % orig_par_path
+        sys.exit(1)
+
 mod_date = datetime.date.fromtimestamp(os.path.getmtime(
                             orig_par_path)).isoformat()
 
 if dbname.lower() == 'hitran':
     par_dir = orig_par_dir
-    out_dir = os.path.join(HOME, 'research/HITRAN/data')
-elif dbname.lower() == 'minihitran':
-    par_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
-    out_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
-elif dbname.lower() == 'microhitran':
-    par_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
-    out_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
+    out_dir = os.path.join(HOME, 'research/HITRAN/data/hitran')
+else:
+    par_dir = os.path.join(HOME, 'research/HITRAN/data', dbname.lower())
+    out_dir = os.path.join(HOME, 'research/HITRAN/data', dbname.lower())
 par_path = os.path.join(par_dir, par_name)
 
 # the output files will be:
