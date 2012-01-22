@@ -28,11 +28,15 @@ parser = argparse.ArgumentParser(description='Upload some transitions'
 parser.add_argument('-u', '--upload', dest='upload', action='store_const',
         const=True, default=False,
         help='actually upload the data to the database')
+parser.add_argument('-i', '--inserts', dest='insert', action='store_const',
+        const=True, default=False,
+        help='write the MySQL insert commands but don\'t execute them')
 parser.add_argument('file_stem', metavar='<filestem>',
         help='the root of the filenames <filestem>.states'
              ' and <filestem>.trans')
 args = parser.parse_args()
 upload = args.upload
+insert = args.insert
 file_stem = args.file_stem
 
 # Django needs to know where to find the HITRAN project's settings.py:
@@ -73,6 +77,18 @@ refs_dict = {}
 for ref in refs:
     refs_dict[ref.refID] = ref
 
+# get all the isotopologues for this molecule
+isos = Iso.objects.filter(molecule__molecID=molecID)
+isos_dict = {}
+for iso in isos:
+    isos_dict[iso.isoID] = iso
+
+# get the cases for this molecule's states
+cases = Case.objects.all()
+cases_list = [None,]
+for case in cases:
+    cases_list.append(case)
+
 states = []
 start_time = time.time()
 for line in open(states_file, 'r'):
@@ -94,15 +110,16 @@ for line in open(states_file, 'r'):
     # state is one of the hitran_case states (e.g. an HDcs object)
     state = CaseClass(molec_id=molec_id, iso_id=iso_id, E=E, g=g,
                        s_qns=s_qns)
-    iso = Iso.objects.filter(molecule__molecID=molec_id).filter(
-                isoID=iso_id).get()
+    iso = isos_dict[iso_id]
+
     # this_state is a hitranmeta.State object for the MySQL database
     this_state = State(iso=iso, energy=state.E, g=state.g, s_qns=state.s_qns,
                        qns_xml=state.get_qns_xml())
     if upload:
         this_state.save()
     states.append(this_state)
-    case = Case.objects.filter(pk=state.__class__.caseID).get()
+    #case = Case.objects.filter(pk=state.__class__.caseID).get()
+    case = cases_list[state.__class__.caseID]
     for qn_name in state.__class__.ordered_qn_list:
         qn_val = state.get(qn_name)
         if qn_val is None:
@@ -141,8 +158,9 @@ for line in open(trans_file, 'r'):
     trans.case_module = hitran_meta.get_case_module(trans.molec_id,
                         trans.iso_id)
 
-    iso = Iso.objects.filter(molecule__molecID=trans.molec_id).filter(
-                isoID=trans.iso_id).get()
+    iso = isos_dict[iso_id]
+    #iso = Iso.objects.filter(molecule__molecID=trans.molec_id).filter(
+    #            isoID=trans.iso_id).get()
     statep = states[trans.stateIDp]
     statepp = states[trans.stateIDpp]
     # this_trans is a hitranmeta.Trans object for the MySQL database
