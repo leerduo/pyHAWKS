@@ -23,7 +23,7 @@ from HITRAN_configs import dbname
 
 HOME = os.getenv('HOME')
 if dbname.lower() == 'hitran':
-    data_dir = os.path.join(HOME, 'research/HITRAN/data')
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/hitran')
 elif dbname.lower() == 'minihitran':
     data_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
 elif dbname.lower() == 'microhitran':

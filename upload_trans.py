@@ -47,7 +47,7 @@ from hitranlbl.models import *
 print 'using database:', dbname
 
 if dbname.lower() == 'hitran':
-    data_dir = os.path.join(HOME, 'research/HITRAN/data')
+    data_dir = os.path.join(HOME, 'research/HITRAN/data/hitran')
 elif dbname.lower() == 'minihitran':
     data_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
 elif dbname.lower() == 'microhitran':
@@ -63,6 +63,15 @@ valid_from = datetime.date(*[int(x) for x in valid_from_iso.split('-')])
 # the HITAN molecule ID is the first two characters of file_stem
 molecID = int(file_stem[:2])
 molec_name = Molecule.objects.filter(molecID=molecID).get().ordinary_formula
+
+# get all the references for this molecule
+s = molec_name
+s.replace('+', 'p')
+s = '%s-' % s
+refs = Ref.objects.filter(refID__startswith=s)
+refs_dict = {}
+for ref in refs:
+    refs_dict[ref.refID] = ref
 
 states = []
 start_time = time.time()
@@ -157,13 +166,15 @@ for line in open(trans_file, 'r'):
             sref = sref.replace('+', 'p')  # we can't use '+' in XML attributes
             sref = sref.replace('-Sw-', '-S-') # references to Sw refer to S
             sref = sref.replace('-A-', '-S-')  # references to A are from S
-            try:
-                ref = Ref.objects.filter(refID=sref).get()
-            except Ref.DoesNotExist:
-                if iref != 0 :
-                    # ignore the common case of reference 0 missing
-                    print 'Warning: %s does not exist' % sref
-                ref = None
+            ref = refs_dict.get(sref)
+            #try:
+            #    ref = Ref.objects.filter(refID=sref).get()
+            #except Ref.DoesNotExist:
+            #    if iref != 0 :
+            if ref is None and iref !=0:
+                # ignore the common case of reference 0 missing
+                print 'Warning: %s does not exist' % sref
+                #ref = None
         prm = Prm(trans=this_trans, name=prm_name,
                   val=val,
                   err=trans.get_param_attr(prm_name, 'err'),

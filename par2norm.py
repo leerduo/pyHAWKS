@@ -44,7 +44,7 @@ else:
 par_path = os.path.join(par_dir, par_name)
 
 # the output files will be:
-# $HOME/research/HITRAN/data/<par_name>-YYYY-MM-DD.states and .trans or
+# $HOME/research/HITRAN/data/hitran/<par_name>-YYYY-MM-DD.states and .trans or
 # $HOME/research/HITRAN/data/minihitran/<par_name>-YYYY-MM-DD.states and .trans
 # where <par_name> is <molec_ID>_hit08 and is appended with the modification
 # date of the original .par file
