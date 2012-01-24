@@ -51,7 +51,7 @@ def parse_qns(trans):
         sp = -1
     try:
         qnsp['J'] = qnsp['N'] + sp * 0.5
-    except (TypeError, KeyError):   # no spp or no N
+    except (TypeError, KeyError):   # no sp or no N
         pass
     spp = None
     if trans.Qpp[14] == '+':
@@ -97,15 +97,21 @@ def get_hitran_quanta(trans):
         s_Fpp = qn_to_str(trans.statepp, 'F', '%5d', ' '*5)
 
     symp = ' '
-    if trans.statep['J'] < trans.statep['N']:
-        symp = '-'
-    elif trans.statep['J'] > trans.statep['N']:
-        symp = '+'
+    Jp = trans.statep_get('J')
+    Np = trans.statep_get('N')
+    if Jp is not None and Np is not None:
+        if Jp < Np:
+            symp = '-'
+        elif Jp > Np:
+            symp = '+'
     sympp = ' '
-    if trans.statepp['J'] < trans.statepp['N']:
-        sympp = '-'
-    elif trans.statepp['J'] > trans.statepp['N']:
-        sympp = '+'
+    Jpp = trans.statepp_get('J')
+    Npp = trans.statepp_get('N')
+    if Jpp is not None and Npp is not None:
+        if Jpp < Npp:
+            sympp = '-'
+        elif Jpp > Npp:
+            sympp = '+'
 
     Qp = '%s%s%s%s%s' % (s_Np, s_Kap, s_Kcp, s_Fp, symp)
     Qpp = '%s%s%s%s%s' % (s_Npp, s_Kapp, s_Kcpp, s_Fpp, sympp)

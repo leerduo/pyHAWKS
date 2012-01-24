@@ -28,6 +28,11 @@ def correct_par(trans):
         if par_line[115:122] == '3F1   1':
             par_line = par_line[:115] + ' 3F1  1' + par_line[122:]
 
+    if trans.molec_id == 10:
+        # some negative lower state energies for NO2
+        if par_line[48:56] == '-0.00490':
+            par_line = par_line[:48] + '-1.00000' + par_line[56:]
+
     if trans.molec_id == 11:
         # the infamous asSym problem for NH3 - the a/s label is
         # duplicated in the Q and V fields, but for 900 or so lines

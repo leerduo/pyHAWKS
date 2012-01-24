@@ -81,6 +81,7 @@ for ref in refs:
 isos = Iso.objects.filter(molecule__molecID=molecID)
 isos_dict = {}
 for iso in isos:
+    # key isos_dict by HITRAN isotopologue integer id
     isos_dict[iso.isoID] = iso
 
 # get the cases for this molecule's states
@@ -158,7 +159,7 @@ for line in open(trans_file, 'r'):
     trans.case_module = hitran_meta.get_case_module(trans.molec_id,
                         trans.iso_id)
 
-    iso = isos_dict[iso_id]
+    iso = isos_dict[trans.iso_id]
     #iso = Iso.objects.filter(molecule__molecID=trans.molec_id).filter(
     #            isoID=trans.iso_id).get()
     statep = states[trans.stateIDp]
