@@ -72,11 +72,10 @@ class HITRANParam(Param):
             elif self.ierr == 2:
                 self.comment = 'average or estimate'
 
-        if self.err is None and self.ierr is not None:
+        if self.err is None and self.ierr is not None and not self.relative:
             self.set_abs_err()
 
-        self.rerr = None
-        if self.rerr is None and self.relative:
+        if self.relative:
             self.set_rel_err()
 
     def set_abs_err(self):
@@ -99,9 +98,11 @@ class HITRANParam(Param):
         """
 
         if 3 < self.ierr <= 8:
-            self.rerr = self.val * HITRANParam.rel_err_max[self.ierr]
+            self.rerr = HITRANParam.rel_err_max[self.ierr]
+            self.err = self.val * self.rerr
         else:
             self.rerr = None
+            self.err = None
 
     def get_rel_err(self, fmt=None, percent=False):
         """
