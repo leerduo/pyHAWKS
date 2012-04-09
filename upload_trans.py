@@ -193,6 +193,7 @@ for line in open(trans_file, 'r'):
             if ref is None and iref !=0:
                 # ignore the common case of reference 0 missing
                 print 'Warning: %s does not exist' % sref
+                print 'val =',val
                 #ref = None
         prm = Prm(trans=this_trans, name=prm_name,
                   val=val,

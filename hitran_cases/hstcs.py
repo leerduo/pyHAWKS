@@ -80,3 +80,20 @@ class HStcs(Stcs):
                 return [('group', 'G18plus'),]
 
         return []
+
+    def get_qn_attr_tuples(self, qn_name):
+        """
+        Return a list of (attribute-name, attribute-value) tuples for
+        the quantum number qn_name. This is used to add relevant contextual
+        meta-data such as ranking labels and references to nuclear spin
+        identifiers (for hyperfine quantum numbers).
+
+        """
+
+        if qn_name == 'F':
+            if self.molec_id == 24: # CH3Cl
+                return [('nuclearSpinRef', 'Cl1'),]
+            else:
+                print 'warning! unbound F quantum number'
+        return []
+

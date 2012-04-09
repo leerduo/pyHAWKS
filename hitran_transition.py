@@ -99,7 +99,7 @@ class HITRANTransition(Transition):
             # vacuum wavenumber (cm-1)
             this_trans.nu = HITRANParam(val=float(line[3:15]),
                 ref=int(Iref[:2]), name='nu', ierr=int(Ierr[0]))
-                    
+
             # line intensity at 296 K(cm-1/(molec.cm-2). NB in the native
             # HITRAN format, this is weighted by isotopologue abundance
             this_trans.Sw = HITRANParam(val=float(line[15:25]),
