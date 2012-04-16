@@ -92,19 +92,10 @@ molecule = Molecule.objects.filter(pk=molecID).get()
 molec_name = molecule.ordinary_formula
 isos = Iso.objects.filter(molecule=molecule).order_by('isoID')
 
-# get the Ref objects for this molecule
-cursor = connection.cursor()
-query = 'SELECT DISTINCT p.ref_id FROM hitranlbl_prm p, hitranlbl_trans t'\
-        ' WHERE p.trans_id=t.id AND t.iso_id IN (%s)'\
-        % (','.join([str(x.id) for x in isos]))
-cursor.execute(query)
-ref_ids = []
-for row in cursor.fetchall():
-    try:
-        ref_ids.append(int(row[0]))
-    except TypeError:  # if refID is NULL
-        pass
-refs = Ref.objects.all().filter(pk__in=ref_ids)
+# get the Ref objects for this molecule, which have
+# refID <molec_name>-<prm_name>-<id>, but '+' replaced with p, e.g. NO+ -> NOp
+refs = Ref.objects.all().filter(refID__startswith='%s-'
+            % molec_name.replace('+','p'))
 # a dictionary of references, keyed by refID, e.g. 'O2-gamma_self-2'
 d_refs = {}
 for ref in refs:
@@ -156,29 +147,6 @@ def locate_state_in_db(state):
             return dbstate.id
     # nothing matched; return None
     #print dbstate.str_rep(), state.str_rep()
-    return None
-
-# XXX this method isn't used yet
-def locate_trans_in_db(trans):
-    """
-    Try to find trans in the database table modelled by the Trans class;
-    returns None if the transition isn't found, or the transition's primary
-    key id if it is.
-
-    """
-
-    # find all the transitions in the database with the same wavenumber as
-    # the transition we're seeking:
-    dbtranss = Trans.objects.filter(iso=isos[trans.statepp.iso_id-1])\
-                        .filter(nu=trans.nu.val).filter(Sw=trans.Sw.val)
-    if not dbtranss:
-        return None
-    for dbtrans in dbtranss:
-        #if dbtrans.str_rep() == dbtrans.str_rep():
-        # XXX for now just compare par_line, which is quicker and sufficient
-        # if there are no parameters beyond gamma_air, gamma_self, n_air, d_air
-        if dbtrans.par_line == dbtrans.par_line:
-            return dbtrans.id
     return None
 
 def create_trans_states():
@@ -250,18 +218,6 @@ def create_trans_states():
             # if a transition references a new state, it's a new transition
             new_trans = True
 
-        # now look at the transition
-        # XXX actually, all transitions are to be updated...
-        #if new_trans:
-        #    # its got at least one new state, so it's a new transition
-        #    print >>fo_t, trans.to_str(trans_fields, ',')
-        #    continue
-        #this_transID = locate_trans_in_db(trans)
-        #if not this_transID:
-        #    # this is a new transition: store it and move on
-        #    print >>fo_t, trans.to_str(trans_fields, ',')
-        #    continue
-
         # check that the references are in the tables hitranmeta_ref and
         # hitranmeta_source
         for i, prm_name in enumerate(['nu', 'S', 'gamma_air', 'gamma_self',
@@ -295,15 +251,19 @@ def create_trans_states():
                 % (len(lines), len(states), end_time - start_time)
 
 def upload_to_db():
-
     print 'Uploading to database...'
-    existing_transs = Trans.objects.all().filter(iso__in=isos)
+
+    today = datetime.date.today()
+    existing_transs = Trans.objects.all().filter(iso__in=isos)\
+                                         .filter(valid_to__gt=today)
     print existing_transs.count(),'existing transitions in database'
 
-    # expire the old transitions
-    # XXX
+    print 'Expiring old transitions...'
+    for trans in existing_transs:
+        trans.valid_to = today
+        if not dry_run:
+            trans.save()
 
-    #
     # get the molecular state description 'cases' in a list indexed by caseID
     cases = Case.objects.all()
     cases_list = [None,]    # caseIDs start at 1, so case_list[0]=None
@@ -420,10 +380,7 @@ def upload_to_db():
                 # references to A are from S
                 sref = sref.replace('-A-', '-S-')
                 ref = d_refs.get(sref)
-                print sref, ref
                 if ref is None and iref !=0:
-                    print d_refs
-                    sys.exit(1)
                     # ignore the common case of reference 0 missing
                     print 'Warning: %s does not exist' % sref
             prm = Prm(trans=this_trans, name=prm_name,
