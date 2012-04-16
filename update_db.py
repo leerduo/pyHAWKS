@@ -26,13 +26,18 @@ SETTINGS_PATH = os.path.join(HOME,'research/VAMDC/HITRAN/django/HITRAN')
 # Django needs to know where to find the HITRAN project's settings.py:
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from django.db import connection
 
 import time
 import datetime
 import argparse
 from hitran_transition import HITRANTransition
+import hitran_meta
+from hitran_param import HITRANParam
 from fmt_xn import *
-from hitranmeta.models import Iso
+import xn_utils
+from hitranmeta.models import Molecule, Iso, Ref, Case
+from hitranlbl.models import State, Trans, Qns, Prm
 
 dbname = 'hitran'
 
@@ -43,30 +48,69 @@ parser = argparse.ArgumentParser(description='Update the HITRAN MySQL'
 parser.add_argument('par_file', metavar='<par_file>',
         help='the .par file, and root of the filenames <filestem>.states'
              ' and <filestem>.trans')
+parser.add_argument('-p', '--parse_par', dest='parse_par',
+        action='store_const', const=True, default=False,
+        help='parse .par file to  .states and .trans files and exit')
+parser.add_argument('-U', '--upload', dest='upload', action='store_const',
+        const=True, default=False,
+        help='actually upload the data to the database, expiring existing'\
+             ' transitions for this molecule')
+parser.add_argument('-u', '--upload_dry_run', dest='dry_run',
+        action='store_const', const=True, default=False,
+        help='dry-run: create the data structures and SQL INSERT statements'\
+             ' but don\'t  actually upload the data to the database')
 parser.add_argument('-O', '--overwrite', dest='overwrite',
         action='store_const', const=True, default=False,
         help='overwrite .states and .trans files, if present')
 args = parser.parse_args()
-overwrite = args.overwrite
+overwrite = args.overwrite   # over-write any existing .states and .trans files
+parse_par = args.parse_par   # parse the given .par file containing the update
+upload = args.upload         # upload the data to the MySQL database
+dry_run = args.dry_run    # do the upload as a dry-run, without changing the db
+if dry_run:
+    print 'Dry-run only: database won\'t be modified'
+    upload = True
+elif upload:
+    print 'The real thing: database will be modified'
 filestem, ext = os.path.splitext(args.par_file)
 if ext not in ('', '.par'):
-    print 'par_file must end in .par or be given without extension; I got'
+    print 'par_file must end in .par or be given without extension; I got:'
     print args.par_file
     sys.exit(1)
 par_file = '%s.par' % filestem
 filestem = os.path.basename(filestem)
 
-# get the Iso objects from the molecID, taken from the par_file filename
+# get the Molecule and Iso objects from the molecID, taken from
+# the par_file filename
 try:
     molecID = int(filestem.split('_')[0])
 except:
     print 'couldn\'t parse molecID from filestem %s' % filestem
     print 'the filename should start with "<molecID>_"'
     sys.exit(1)
-isos = Iso.objects.filter(molecule__molecID=molecID).order_by('isoID')
+molecule = Molecule.objects.filter(pk=molecID).get()
+molec_name = molecule.ordinary_formula
+isos = Iso.objects.filter(molecule=molecule).order_by('isoID')
 
-from hitranmeta.models import *
-from hitranlbl.models import *
+# get the Ref objects for this molecule
+cursor = connection.cursor()
+query = 'SELECT DISTINCT p.ref_id FROM hitranlbl_prm p, hitranlbl_trans t'\
+        ' WHERE p.trans_id=t.id AND t.iso_id IN (%s)'\
+        % (','.join([str(x.id) for x in isos]))
+cursor.execute(query)
+ref_ids = []
+for row in cursor.fetchall():
+    try:
+        ref_ids.append(int(row[0]))
+    except TypeError:  # if refID is NULL
+        pass
+refs = Ref.objects.all().filter(pk__in=ref_ids)
+# a dictionary of references, keyed by refID, e.g. 'O2-gamma_self-2'
+d_refs = {}
+for ref in refs:
+    d_refs[ref.refID]= ref
+print refs.count(),'references found for', molec_name
+missing_refs = set()
 
 if not os.path.exists(par_file):
     print 'No such file: %s' % par_file
@@ -88,25 +132,9 @@ print 'From file modification date, taking the from-date to be', mod_date
 # .par file
 trans_file = os.path.join(DATA_DIR, '%s.%s.trans' % (filestem, mod_date))
 states_file = os.path.join(DATA_DIR, '%s.%s.states' % (filestem, mod_date))
-print '%s\n-> %s\n   %s' % (par_file, trans_file, states_file)
 
-if not overwrite:
-    # the .trans and .states files should not already exist
-    for filename in (trans_file,states_file):
-        if os.path.exists(filename):
-            print 'File exists:\n%s\nAborting.' % filename
-            sys.exit(1)
-
-# read the lines and rstrip them of the EOL characters. We don't lstrip
-# because we keep the space in front of molecIDs 1-9
-lines = [x.rstrip() for x in open(par_file, 'r').readlines()]
-states = {}
-fo_s = open(states_file, 'w')
-fo_t = open(trans_file, 'w')
-start_time = time.time()
 # find out the ID at which we can start adding states
 first_stateID = State.objects.all().order_by('-id')[0].id + 1
-stateID = first_stateID
 
 def locate_state_in_db(state):
     """
@@ -130,6 +158,7 @@ def locate_state_in_db(state):
     #print dbstate.str_rep(), state.str_rep()
     return None
 
+# XXX this method isn't used yet
 def locate_trans_in_db(trans):
     """
     Try to find trans in the database table modelled by the Trans class;
@@ -152,77 +181,269 @@ def locate_trans_in_db(trans):
             return dbtrans.id
     return None
 
-found_states = 0
-found_trans = 0
-for i,line in enumerate(lines[:100]):       # XXX
-    trans = HITRANTransition.parse_par_line(line)
-    if trans is None:
-        # blank or comment line
-        continue
+def create_trans_states():
+    print 'Creating .trans and .states files...'
+    print '%s\n-> %s\n   %s' % (par_file, trans_file, states_file)
+    if not overwrite:
+        # the .trans and .states files should not already exist
+        for filename in (trans_file,states_file):
+            if os.path.exists(filename):
+                print 'File exists:\n%s\nAborting.' % filename
+                sys.exit(1)
 
-    new_trans = False
-    # upper state
-    this_stateID = locate_state_in_db(trans.statep)
-    if this_stateID:
-        # this state is already in the database; set trans.stateIDp
-        trans.stateIDp = this_stateID
-        found_states += 1
-    else:
-        # this state isn't in the database: keep track of it in states[]
-        statep_str_rep = trans.statep.str_rep()
-        if statep_str_rep not in states:
-            # we've not seen this upper state before: save it and write it
-            # to fo_s
-            trans.stateIDp = stateID
-            states[statep_str_rep] = stateID
-            stateID += 1
-            print >>fo_s, trans.statep.to_str(state_fields, ',')
+    # read the lines and rstrip them of the EOL characters. We don't lstrip
+    # because we keep the space in front of molecIDs 1-9
+    lines = [x.rstrip() for x in open(par_file, 'r').readlines()]
+    states = {}
+    fo_s = open(states_file, 'w')
+    fo_t = open(trans_file, 'w')
+    start_time = time.time()
+    stateID = first_stateID
+
+    found_states = 0
+    found_trans = 0
+    for i,line in enumerate(lines):       # XXX
+        trans = HITRANTransition.parse_par_line(line)
+        if trans is None:
+            # blank or comment line
+            continue
+
+        new_trans = False
+        # upper state
+        this_stateID = locate_state_in_db(trans.statep)
+        if this_stateID:
+            # this state is already in the database; set trans.stateIDp
+            trans.stateIDp = this_stateID
+            found_states += 1
         else:
-            trans.stateIDp = states[statep_str_rep]
-        # if a transition references a new state, it's a new transition
-        new_trans = True
-    # lower state
-    this_stateID = locate_state_in_db(trans.statepp)
-    if this_stateID:
-        # this state is already in the database; set trans.stateIDpp
-        trans.stateIDpp = this_stateID
-        found_states += 1
-    else:
-        # this state isn't in the database: keep track of it in states[]
-        statepp_str_rep = trans.statepp.str_rep()
-        if statepp_str_rep not in states:
-            # we've not seen this lower state before: save it and write it
-            # to fo_s
-            trans.stateIDpp = stateID
-            states[statepp_str_rep] = stateID
-            stateID += 1
-            print >>fo_s, trans.statepp.to_str(state_fields, ',')
+            # this state isn't in the database: keep track of it in states[]
+            statep_str_rep = trans.statep.str_rep()
+            if statep_str_rep not in states:
+                # we've not seen this upper state before: save it and write it
+                # to fo_s
+                trans.stateIDp = stateID
+                states[statep_str_rep] = stateID
+                stateID += 1
+                print >>fo_s, trans.statep.to_str(state_fields, ',')
+            else:
+                trans.stateIDp = states[statep_str_rep]
+            # if a transition references a new state, it's a new transition
+            new_trans = True
+        # lower state
+        this_stateID = locate_state_in_db(trans.statepp)
+        if this_stateID:
+            # this state is already in the database; set trans.stateIDpp
+            trans.stateIDpp = this_stateID
+            found_states += 1
         else:
-            trans.stateIDpp = states[statepp_str_rep]
-        # if a transition references a new state, it's a new transition
-        new_trans = True
+            # this state isn't in the database: keep track of it in states[]
+            statepp_str_rep = trans.statepp.str_rep()
+            if statepp_str_rep not in states:
+                # we've not seen this lower state before: save it and write it
+                # to fo_s
+                trans.stateIDpp = stateID
+                states[statepp_str_rep] = stateID
+                stateID += 1
+                print >>fo_s, trans.statepp.to_str(state_fields, ',')
+            else:
+                trans.stateIDpp = states[statepp_str_rep]
+            # if a transition references a new state, it's a new transition
+            new_trans = True
 
-    # now look at the transition
-    if new_trans:
-        # its got at least one new state, so it's a new transition
+        # now look at the transition
+        # XXX actually, all transitions are to be updated...
+        #if new_trans:
+        #    # its got at least one new state, so it's a new transition
+        #    print >>fo_t, trans.to_str(trans_fields, ',')
+        #    continue
+        #this_transID = locate_trans_in_db(trans)
+        #if not this_transID:
+        #    # this is a new transition: store it and move on
+        #    print >>fo_t, trans.to_str(trans_fields, ',')
+        #    continue
+
+        # check that the references are in the tables hitranmeta_ref and
+        # hitranmeta_source
+        for i, prm_name in enumerate(['nu', 'S', 'gamma_air', 'gamma_self',
+                                      'n_air', 'delta_air']):
+            iref = int(trans.par_line[133+2*i:135+2*i])
+            if iref == 0:
+                # don't worry about missing 0 refs (HITRAN 1986 paper)
+                continue
+            sref = '%s-%s-%d' % (molec_name, prm_name, iref)
+            sref = sref.replace('+', 'p')  # we can't use '+' in XML attributes
+            if sref not in d_refs.keys():
+                missing_refs.add(sref)
+
         print >>fo_t, trans.to_str(trans_fields, ',')
-        continue
-    this_transID = locate_trans_in_db(trans)
-    if not this_transID:
-        # this is a new transition: store it and move on
-        print >>fo_t, trans.to_str(trans_fields, ',')
+
+        # if we're here, it's because the transition is already in the database
+        found_trans += 1
         continue
 
-    # if we're here, it's because the transition is already in the database
-    found_trans += 1
-    continue
+    fo_t.close()
+    fo_s.close()
+    print '%d states were already in the database' % found_states
+    print '%d new or updated states were identified' % (stateID-first_stateID)
+    print '%d transitions were already in the database' % found_trans
+    print 'References missing from the database are:'
+    for missing_ref in missing_refs:
+        print missing_ref
 
-fo_t.close()
-fo_s.close()
-print '%d states were already in the database' % found_states
-print '%d new or updated states were identified' % (stateID-first_stateID)
-print '%d transitions were already in the database' % found_trans
+    end_time = time.time()
+    print '%d transitions and %d states in %.1f secs'\
+                % (len(lines), len(states), end_time - start_time)
 
-end_time = time.time()
-print '%d transitions and %d states in %.1f secs' % (len(lines), len(states),
-            end_time - start_time)
+def upload_to_db():
+
+    print 'Uploading to database...'
+    existing_transs = Trans.objects.all().filter(iso__in=isos)
+    print existing_transs.count(),'existing transitions in database'
+
+    # expire the old transitions
+    # XXX
+
+    #
+    # get the molecular state description 'cases' in a list indexed by caseID
+    cases = Case.objects.all()
+    cases_list = [None,]    # caseIDs start at 1, so case_list[0]=None
+    for case in cases:
+        cases_list.append(case)
+
+    # read in, store, and upload the states from the .states file
+    states = []
+    start_time = time.time()
+    for line in open(states_file, 'r'):
+        fields = line.split(',')
+        molec_id = int(fields[0])
+        iso_id = int(fields[1])
+        try:
+            E = float(fields[2])
+        except (TypeError, ValueError):
+            E = None
+        try:
+            g = int(fields[3])
+        except (TypeError, ValueError):
+            g = None
+        s_qns = fields[4].strip()
+        if not s_qns:
+            s_qns == None
+        CaseClass = hitran_meta.get_case_class(molec_id, iso_id)
+        # state is one of the hitran_case states (e.g. an HDcs object)
+        state = CaseClass(molec_id=molec_id, iso_id=iso_id, E=E, g=g,
+                           s_qns=s_qns)
+        iso = isos[iso_id-1]
+
+        # this_state is a hitranlbl.State object for the MySQL database
+        this_state = State(iso=iso, energy=state.E, g=state.g,
+                           s_qns=state.s_qns, qns_xml=state.get_qns_xml())
+        if not dry_run:
+            # if we're doing it for real, save the State just created
+            this_state.save()
+        states.append(this_state)
+
+        # now create the quantum numbers entries for this state
+        case = cases_list[state.__class__.caseID]
+        for qn_name in state.__class__.ordered_qn_list:
+            qn_val = state.get(qn_name)
+            if qn_val is None:
+                continue
+            qn_attr = state.serialize_qn_attrs(qn_name)
+            if qn_attr:
+                # strip the initial '#'
+                qn_attr = qn_attr[1:]
+            else:
+                qn_attr = None
+            xml = state.get_qn_xml(qn_name)
+            if not xml:
+                xml = None
+            qn = Qns(case=case, state=this_state, qn_name=qn_name,
+                     qn_val=str(qn_val), qn_attr=qn_attr, xml=xml)
+            if not dry_run:
+                # if we're really uploading, save qn to the database
+                qn.save()
+    end_time = time.time()
+    print '%d states read in (%s)' % (len(states),
+                xn_utils.timed_at(end_time - start_time))
+
+    # now read in and upload the transitions
+    start_time = time.time()
+    ntrans = 0
+    for line in open(trans_file, 'r'):
+        line = line.rstrip()
+        trans = HITRANTransition()
+        for prm_name in trans_prms:
+            # create and attach the HITRANParam objects
+            setattr(trans, prm_name, HITRANParam(None))
+        fields = line.split(',')
+        for i, output_field in enumerate(trans_fields):
+            # set the transition attributes
+            trans.set_param(output_field.name, fields[i], output_field.fmt)
+        if trans.stateIDp < first_stateID:
+            # this state is already in the database: find it
+            trans.statep = State.objects.all().get(pk=trans.stateIDp)
+        else:
+            # new state: get it from the states list
+            trans.statep = states[trans.stateIDp-first_stateID]
+        if trans.stateIDpp < first_stateID:
+            # this state is already in the database: find it
+            trans.statepp = State.objects.all().get(pk=trans.stateIDpp)
+        else:
+            trans.statepp = states[trans.stateIDpp-first_stateID]
+        trans.case_module = hitran_meta.get_case_module(trans.molec_id,
+                            trans.iso_id)
+
+        iso = isos[trans.iso_id-1]
+        # this_trans is a hitranmeta.Trans object for the MySQL database
+        this_trans = Trans(iso=iso, statep=trans.statep, statepp=trans.statepp,
+                nu=trans.nu.val, Sw=trans.Sw.val, A=trans.A.val,
+                multipole=trans.multipole, Elower=trans.Elower, gp=trans.gp,
+                gpp=trans.gpp, valid_from=mod_date, par_line=trans.par_line)
+        ntrans += 1
+        if not dry_run:
+            # if we're really uploading, save the transition to the database
+            this_trans.save()
+        
+        # create the hitranlbl.Prm objects for this transition's parameters
+        for prm_name in trans_prms:
+            val = trans.get_param_attr(prm_name, 'val')
+            if val is None:
+                continue
+            iref = trans.get_param_attr(prm_name, 'ref')
+            ref=None
+            if iref is not None:
+                sref = '%s-%s-%d' % (molec_name, prm_name, iref)
+                # we can't use '+' in XML attributes
+                sref = sref.replace('+', 'p')
+                # references to Sw refer to S
+                sref = sref.replace('-Sw-', '-S-')
+                # references to A are from S
+                sref = sref.replace('-A-', '-S-')
+                ref = d_refs.get(sref)
+                print sref, ref
+                if ref is None and iref !=0:
+                    print d_refs
+                    sys.exit(1)
+                    # ignore the common case of reference 0 missing
+                    print 'Warning: %s does not exist' % sref
+            prm = Prm(trans=this_trans, name=prm_name,
+                      val=val,
+                      err=trans.get_param_attr(prm_name, 'err'),
+                      ref=ref)
+            if not dry_run:
+                # if we're really uploading, save the prm to the database
+                prm.save()
+
+    end_time = time.time()
+    print '%d transitions read in (%s)' % (ntrans,
+                xn_utils.timed_at(end_time - start_time))
+
+if parse_par:
+    create_trans_states()
+if upload:
+    if missing_refs:
+        # if we're trying to upload the data immediately after parsing the
+        # par file, bail if there references haven't been entered into the db
+        print 'can\'t update database when there are missing refs.'
+        sys.exit(1)
+    upload_to_db()

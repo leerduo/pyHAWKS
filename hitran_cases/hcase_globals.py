@@ -13,8 +13,11 @@ import xn_utils
 
 # a dictionary of branch designations, to and from the corresponding DeltaJ:
 # e.g. Jp = Jpp + branch['R'] means Jp = Jpp + 1 and branch[-1] = 'P'
-branch = { 'M': -4, 'O': -2, 'P': -1, 'Q': 0, 'R': 1, 'S': 2, 'U': 4,
-		   -4: 'M', -2: 'O', -1: 'P', 0: 'Q', 1: 'R', 2: 'S', 4: 'U'}
+# also used for DeltaN, hence the large possible branch deltas
+branch = { 'K': -6, 'L': -5, 'M': -4, 'N': -3, 'O': -2, 'P': -1, 'Q': 0,
+           'R': 1, 'S': 2, 'T': 3, 'U': 4, 'V': 5, 'W': 6,
+		   -6: 'K', -5: 'L', -4: 'M', -3: 'N', -2: 'O', -1: 'P', 0: 'Q',
+            1: 'R', 2: 'S', 3: 'T', 4: 'U', 5: 'V', 6: 'W'}
 
 vib_qn_patt = '^v(\d+)$'    # regexp matching vibrational quantum number name
 
