@@ -26,7 +26,7 @@ SETTINGS_PATH = os.path.join(HOME,'research/VAMDC/HITRAN/django/HITRAN')
 # Django needs to know where to find the HITRAN project's settings.py:
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-from django.db import connection
+from django.db import connection, transaction
 
 import time
 import datetime
@@ -62,11 +62,15 @@ parser.add_argument('-u', '--upload_dry_run', dest='dry_run',
 parser.add_argument('-O', '--overwrite', dest='overwrite',
         action='store_const', const=True, default=False,
         help='overwrite .states and .trans files, if present')
+parser.add_argument('-s', '--sources', dest='attach_sources',
+        action='store_const', const=True, default=False,
+        help='attach source IDs to parameters')
 args = parser.parse_args()
 overwrite = args.overwrite   # over-write any existing .states and .trans files
 parse_par = args.parse_par   # parse the given .par file containing the update
 upload = args.upload         # upload the data to the MySQL database
 dry_run = args.dry_run    # do the upload as a dry-run, without changing the db
+attach_sources = args.attach_sources    # attach sources to parameters
 if dry_run:
     print 'Dry-run only: database won\'t be modified'
     upload = True
@@ -260,7 +264,7 @@ def upload_to_db():
 
     print 'Expiring old transitions...'
     for trans in existing_transs:
-        trans.valid_to = today
+        trans.valid_to = mod_date
         if not dry_run:
             trans.save()
 
@@ -395,6 +399,47 @@ def upload_to_db():
     print '%d transitions read in (%s)' % (ntrans,
                 xn_utils.timed_at(end_time - start_time))
 
+def attach_sources():
+    print 'attaching sources to parameters...'
+    cursor = connection.cursor()
+    command = 'UPDATE hitranlbl_prm p, hitranlbl_trans t, hitranmeta_ref r'\
+              ' SET p.source_id=r.source_id WHERE'\
+              ' t.valid_from="%s" AND t.iso_id IN (%s) AND p.trans_id=t.id'\
+              ' AND p.ref_id=r.id' % (str(mod_date),
+                                      ','.join([str(iso.id) for iso in isos]))
+    print command
+    cursor.execute(command)
+    transaction.commit_unless_managed()
+
+    return
+    print 'getting transitions...'
+    transitions = Trans.objects.all().filter(isos__in=isos)\
+                                     .filter(valid_from=mod_date)\
+                                     .select_related()
+    print transitions.count(), 'transitions found.'
+    cursor = connection.cursor()
+    print 'getting parameters...'
+    for i,trans in enumerate(transitions):
+        query = 'SELECT p.id, p.ref_id, p.source_id, r.source_id FROM hitranlbl_prm p, hitranmeta_ref r WHERE trans_id=%d and p.ref_id=r.id'\
+                        % trans.id
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        for row in rows:
+            psource_id = row[2]
+            if psource_id is not None:
+                # this parameter already has a source_id
+                continue
+            rsource_id = row[3]
+            if rsource_id:      # source_id in Refs is 1,2,... (a primary key)
+                pass    # XXX
+                
+            print 'prm.id = %d, prm.ref_id = %s, prm.refID = %s, prm.source_id = %s'\
+                % (row[0], row[1], row[2], str(row[3]))
+        if i == 10:
+            sys.exit(0)
+        
+
+
 if parse_par:
     create_trans_states()
 if upload:
@@ -404,3 +449,5 @@ if upload:
         print 'can\'t update database when there are missing refs.'
         sys.exit(1)
     upload_to_db()
+if attach_sources:
+    attach_sources()
