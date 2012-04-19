@@ -36,7 +36,7 @@ import hitran_meta
 from hitran_param import HITRANParam
 from fmt_xn import *
 import xn_utils
-from hitranmeta.models import Molecule, Iso, Ref, Case
+from hitranmeta.models import Molecule, Iso, RefsMap, Case
 from hitranlbl.models import State, Trans, Qns, Prm
 
 dbname = 'hitran'
@@ -70,7 +70,7 @@ overwrite = args.overwrite   # over-write any existing .states and .trans files
 parse_par = args.parse_par   # parse the given .par file containing the update
 upload = args.upload         # upload the data to the MySQL database
 dry_run = args.dry_run    # do the upload as a dry-run, without changing the db
-attach_sources = args.attach_sources    # attach sources to parameters
+attach_sources_opt = args.attach_sources    # attach sources to parameters
 if dry_run:
     print 'Dry-run only: database won\'t be modified'
     upload = True
@@ -82,6 +82,9 @@ if ext not in ('', '.par'):
     print args.par_file
     sys.exit(1)
 par_file = '%s.par' % filestem
+if not os.path.exists(par_file):
+    print 'par_file not found:', par_file
+    sys.exit(1)
 filestem = os.path.basename(filestem)
 
 # get the Molecule and Iso objects from the molecID, taken from
@@ -96,9 +99,9 @@ molecule = Molecule.objects.filter(pk=molecID).get()
 molec_name = molecule.ordinary_formula
 isos = Iso.objects.filter(molecule=molecule).order_by('isoID')
 
-# get the Ref objects for this molecule, which have
+# get the RefsMap objects for this molecule, which have
 # refID <molec_name>-<prm_name>-<id>, but '+' replaced with p, e.g. NO+ -> NOp
-refs = Ref.objects.all().filter(refID__startswith='%s-'
+refs = RefsMap.objects.all().filter(refID__startswith='%s-'
             % molec_name.replace('+','p'))
 # a dictionary of references, keyed by refID, e.g. 'O2-gamma_self-2'
 d_refs = {}
@@ -141,8 +144,12 @@ def locate_state_in_db(state):
      
     # find all the states in the database with the same quantum numbers as
     # the state we're seeking:
-    dbstates = State.objects.filter(iso=isos[state.iso_id-1])\
-                        .filter(s_qns=state.serialize_qns())
+    try:
+        dbstates = State.objects.filter(iso=isos[state.iso_id-1])\
+                            .filter(s_qns=state.serialize_qns())
+    except IndexError:
+        print 'unknown isotopologue with HITRAN isoID =', state.iso_id
+        sys.exit(1)
     if not dbstates:
         return None
     for dbstate in dbstates:
@@ -387,10 +394,15 @@ def upload_to_db():
                 if ref is None and iref !=0:
                     # ignore the common case of reference 0 missing
                     print 'Warning: %s does not exist' % sref
+            if iref == 0:
+                source_id = 1
+            else:
+                source_id = ref.source_id
             prm = Prm(trans=this_trans, name=prm_name,
                       val=val,
                       err=trans.get_param_attr(prm_name, 'err'),
-                      ref=ref)
+                      ierr=trans.get_param_attr(prm_name, 'ierr'),
+                      source_id=source_id)
             if not dry_run:
                 # if we're really uploading, save the prm to the database
                 prm.save()
@@ -402,7 +414,8 @@ def upload_to_db():
 def attach_sources():
     print 'attaching sources to parameters...'
     cursor = connection.cursor()
-    command = 'UPDATE hitranlbl_prm p, hitranlbl_trans t, hitranmeta_ref r'\
+    command = 'UPDATE hitranlbl_prm p, hitranlbl_trans t,'\
+              ' hitranmeta_refs_map r'\
               ' SET p.source_id=r.source_id WHERE'\
               ' t.valid_from="%s" AND t.iso_id IN (%s) AND p.trans_id=t.id'\
               ' AND p.ref_id=r.id' % (str(mod_date),
@@ -412,33 +425,8 @@ def attach_sources():
     transaction.commit_unless_managed()
 
     return
-    print 'getting transitions...'
-    transitions = Trans.objects.all().filter(isos__in=isos)\
-                                     .filter(valid_from=mod_date)\
-                                     .select_related()
-    print transitions.count(), 'transitions found.'
-    cursor = connection.cursor()
-    print 'getting parameters...'
-    for i,trans in enumerate(transitions):
-        query = 'SELECT p.id, p.ref_id, p.source_id, r.source_id FROM hitranlbl_prm p, hitranmeta_ref r WHERE trans_id=%d and p.ref_id=r.id'\
-                        % trans.id
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        for row in rows:
-            psource_id = row[2]
-            if psource_id is not None:
-                # this parameter already has a source_id
-                continue
-            rsource_id = row[3]
-            if rsource_id:      # source_id in Refs is 1,2,... (a primary key)
-                pass    # XXX
-                
-            print 'prm.id = %d, prm.ref_id = %s, prm.refID = %s, prm.source_id = %s'\
-                % (row[0], row[1], row[2], str(row[3]))
-        if i == 10:
-            sys.exit(0)
-        
 
+### Main program starts here! ###
 
 if parse_par:
     create_trans_states()
@@ -449,5 +437,6 @@ if upload:
         print 'can\'t update database when there are missing refs.'
         sys.exit(1)
     upload_to_db()
-if attach_sources:
+
+if attach_sources_opt:
     attach_sources()

@@ -99,7 +99,7 @@ class HITRANParam(Param):
 
         if 3 < self.ierr <= 8:
             self.rerr = HITRANParam.rel_err_max[self.ierr]
-            self.err = self.val * self.rerr
+            self.err = abs(self.val) * self.rerr
         else:
             self.rerr = None
             self.err = None
