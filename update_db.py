@@ -11,18 +11,16 @@
 # Only states and transitions that have changed from those already in the
 # database are saved in .states and .trans files - ie this creates a patch.
 
-# NB this program expects to find a directory
-# $DATA_DIR = $HOME/research/HITRAN/data/hitran
-# into which it puts the .states and .trans files.
-# One must also specify the location of the Django HITRAN project's
-# settings file - see below: $HOME/research/VAMDC/HITRAN/django/HITRAN
+# NB this program expects a configuration file, pyHAWKS_config.py
+# containing DATA_DIR and SETTINGS_PATH, the location of the directory
+# to create the .states and .trans files in and the location of the Django
+# settings.py file respectively.
 
 import os
 import sys
 
-HOME = os.getenv('HOME')
-DATA_DIR = os.path.join(HOME, 'research/HITRAN/data/hitran')
-SETTINGS_PATH = os.path.join(HOME,'research/VAMDC/HITRAN/django/HITRAN')
+from pyHAWKS_config import *
+
 # Django needs to know where to find the HITRAN project's settings.py:
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
