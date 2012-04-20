@@ -28,6 +28,21 @@ def parse_qns(trans):
     qnsp = {'ElecStateLabel': 'X'}
     qnspp = {'ElecStateLabel': 'X'}
 
+    if trans.molec_id == 3: # O3
+        # vibrationally mixed states (for the upper state only)
+        # are labelled with roman numerals
+        roman_numeral_rank = trans.Vp[:9].strip()
+        if roman_numeral_rank:
+            if roman_numeral_rank == 'I':
+                save_qn(qnsp, 'r', 1)
+            elif roman_numeral_rank == 'II':
+                save_qn(qnsp, 'r', 2)
+            elif roman_numeral_rank == 'III':
+                save_qn(qnsp, 'r', 3)
+            else:
+                raise ValueError('unidentified vibrational rank: %s'
+                                 % roman_numeral_rank)
+
     save_qn(qnsp, 'v1', trans.Vp[9:11])
     save_qn(qnsp, 'v2', trans.Vp[11:13])
     save_qn(qnsp, 'v3', trans.Vp[13:15])
@@ -53,13 +68,24 @@ def get_hitran_quanta(trans):
 
     """
 
+    # ranking index for vibrationally-mixed states
+    s_rp = ' '*9
+    r = trans.statep.get('r')
+    if r:
+        if r == 1:
+            s_rp = '        I'
+        elif r == 2:
+            s_rp = '       II'
+        elif r == 3:
+            s_rp = '      III'
+
     s_v1p = qn_to_str(trans.statep, 'v1', '%2d', '  ')
     s_v2p = qn_to_str(trans.statep, 'v2', '%2d', '  ')
     s_v3p = qn_to_str(trans.statep, 'v3', '%2d', '  ')
     s_v1pp = qn_to_str(trans.statepp, 'v1', '%2d', '  ')
     s_v2pp = qn_to_str(trans.statepp, 'v2', '%2d', '  ')
     s_v3pp = qn_to_str(trans.statepp, 'v3', '%2d', '  ')
-    Vp = '         %s%s%s' % (s_v1p, s_v2p, s_v3p)
+    Vp = '%s%s%s%s' % (s_rp, s_v1p, s_v2p, s_v3p)
     Vpp = '         %s%s%s' % (s_v1pp, s_v2pp, s_v3pp)
 
     s_Jp = qn_to_str(trans.statep, 'J', '%3d', '   ')

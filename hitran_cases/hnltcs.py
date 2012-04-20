@@ -30,3 +30,9 @@ class HNltcs(Nltcs):
 
         print 'Warning! unbound F quantum number'
         return []
+
+    def get_qn_xml_attr_tuples(self, qn_name):
+        if self.molec_id == 3 and qn_name == 'r':
+            return [('name', 'Vibrational mixing rank'),]
+        else:
+            return self.get_qn_attr_tuples(qn_name)

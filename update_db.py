@@ -65,11 +65,17 @@ parser.add_argument('-O', '--overwrite', dest='overwrite',
 parser.add_argument('-s', '--sources', dest='attach_sources',
         action='store_const', const=True, default=False,
         help='attach source IDs to parameters')
+parser.add_argument('-e', '--expire', dest='expire_file',
+        nargs=1, help='.par file of old transitions to expire from database')
 args = parser.parse_args()
 overwrite = args.overwrite   # over-write any existing .states and .trans files
 parse_par = args.parse_par   # parse the given .par file containing the update
 upload = args.upload         # upload the data to the MySQL database
 dry_run = args.dry_run    # do the upload as a dry-run, without changing the db
+expire_file = args.expire_file  # optional .par file of transitions to expire
+if expire_file:
+    expire_file = expire_file[0]
+
 attach_sources_opt = args.attach_sources    # attach sources to parameters
 if dry_run:
     print 'Dry-run only: database won\'t be modified'
@@ -261,6 +267,19 @@ def create_trans_states():
     print '%d transitions and %d states in %.1f secs'\
                 % (len(lines), len(states), end_time - start_time)
 
+def expire_old():
+    print 'Expiring old transitions from', expire_file,'...'
+    nold = 0
+    old_par_lines = []
+    for par_line in open(expire_file, 'r').readlines():
+        old_par_lines.append(par_line.rstrip())
+    old_transitions = Trans.objects.all().filter(par_line__in=old_par_lines)
+    for old_trans in old_transitions:
+        old_trans.valid_to = mod_date
+        if not dry_run:
+            old_trans.save()
+    print old_transitions.count(), 'old lines expired'
+
 def upload_to_db():
     print 'Uploading to database...'
 
@@ -269,11 +288,14 @@ def upload_to_db():
                                          .filter(valid_to__gt=today)
     print existing_transs.count(),'existing transitions in database'
 
-    print 'Expiring old transitions...'
-    for trans in existing_transs:
-        trans.valid_to = mod_date
-        if not dry_run:
-            trans.save()
+    if expire_file:
+        expire_old()
+    else:
+        print 'Expiring all old transitions...'
+        for trans in existing_transs:
+            trans.valid_to = mod_date
+            if not dry_run:
+                trans.save()
 
     # get the molecular state description 'cases' in a list indexed by caseID
     cases = Case.objects.all()
