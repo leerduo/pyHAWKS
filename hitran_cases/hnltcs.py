@@ -23,9 +23,9 @@ class HNltcs(Nltcs):
             return []
 
         if self.molec_id == 3:  # O3
-            if self.iso_id == 4:    # (16O)(16O)(17O)
+            if self.local_iso_id == 4:    # (16O)(16O)(17O)
                 return [('nuclearSpinRef', 'O3'),]
-            if self.iso_id == 5:    # (16O)(17O)(16O)
+            if self.local_iso_id == 5:    # (16O)(17O)(16O)
                 return [('nuclearSpinRef', 'O2'),]
 
         print 'Warning! unbound F quantum number'

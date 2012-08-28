@@ -39,7 +39,7 @@ def parse_qns(trans):
     if trans.molec_id == 11:    # vibrational inversion for NH3
         save_qn_str(qnsp, 'vibInv', trans.Vp[14])
         save_qn_str(qnspp, 'vibInv', trans.Vpp[14])
-        if trans.iso_id == 2 and trans.Vp[14] == ' ':   # (15N)H3
+        if trans.local_iso_id == 2 and trans.Vp[14] == ' ':   # (15N)H3
             # some of the lower states of (15N)H3 use +/- instead of a/s
             s_vibinvpp = trans.Qpp[10]
             s_vibinvpp = s_vibinvpp.replace('+', 's')

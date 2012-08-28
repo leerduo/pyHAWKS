@@ -1,110 +1,166 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # par2norm.py
 
-# Christian Hill, 24/8/11
-# Department of Physics and Astronomy, University College London
-# christian.hill@ucl.ac.uk
+# v0.2
+# Christian Hill, 3/8/12
 #
-# A script to parse a given .par file in the native HITRAN2004+ format
-# and extract the relevant data for upload to the relational database.
-
+# Methods to parse a .par file into normalized .states and .trans files
 import os
 import sys
 import time
-import datetime
+
+from pyHAWKS_config import SETTINGS_PATH
 from hitran_transition import HITRANTransition
-from fmt_xn import *
-from HITRAN_configs import dbname
+import xn_utils
+vprint = xn_utils.vprint
+from fmt_xn import trans_fields
+# Django needs to know where to find the HITRAN project's settings.py:
+sys.path.append(SETTINGS_PATH)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from hitranlbl.models import State
 
-molec_id = int(sys.argv[1])
-par_name = '%02d_hit08.par' % molec_id
+def parse_par(args, molecule, isos, d_refs):
+    """
+    Parse the input .par file, args.par_file, into normalized .states and
+    .trans files, checking for the existence of the relevant sources and
+    not outputing duplicates.
+    NB the input .par file must be in order of increasing wavenumber.
 
-HOME = os.getenv('HOME')
-# whether we're using hitran or minihitran, get the last modified date from
-# the original par file
-orig_par_dir = os.path.join(HOME, 'research/HITRAN/HITRAN2008/HITRAN2008/'\
-                                  'By-Molecule/Uncompressed-files')
-orig_par_path = os.path.join(orig_par_dir, par_name)
-if not os.path.exists(orig_par_path):
-    orig_par_path=orig_par_path.replace('By-Molecule/Uncompressed-files', 'Supplemental')
-    if not os.path.exists(orig_par_path):
-        print "couldn't stat path %s" % orig_par_path
-        sys.exit(1)
+    """
 
-mod_date = datetime.date.fromtimestamp(os.path.getmtime(
-                            orig_par_path)).isoformat()
+    # get all of the states for this molecule currently in the database
+    # as their string representations
+    db_stateIDs = {}
+    for state in State.objects.filter(iso__in=isos):
+        db_stateIDs[state.str_rep()] = state.id
+                                
+    vprint('%d existing states for %s read in from database'\
+                % (len(db_stateIDs), molecule.ordinary_formula))
 
-if dbname.lower() == 'hitran':
-    par_dir = orig_par_dir
-    out_dir = os.path.join(HOME, 'research/HITRAN/data/hitran')
-else:
-    par_dir = os.path.join(HOME, 'research/HITRAN/data', dbname.lower())
-    out_dir = os.path.join(HOME, 'research/HITRAN/data', dbname.lower())
-par_path = os.path.join(par_dir, par_name)
+    vprint('Creating .trans and .states files...')
+    vprint('%s\n-> %s\n   %s'\
+            % (args.par_file, args.trans_file, args.states_file))
 
-# the output files will be:
-# $HOME/research/HITRAN/data/hitran/<par_name>-YYYY-MM-DD.states and .trans or
-# $HOME/research/HITRAN/data/minihitran/<par_name>-YYYY-MM-DD.states and .trans
-# where <par_name> is <molec_ID>_hit08 and is appended with the modification
-# date of the original .par file
-trans_name = '%s.%s.trans' % (par_name[:-4], mod_date)
-states_name = '%s.%s.states' % (par_name[:-4], mod_date)
-print '%s -> (%s, %s)' % (par_name, trans_name, states_name)
+    if not args.overwrite:
+        # the .trans and .states files should not already exist
+        for filename in (args.trans_file, args.states_file):
+            if os.path.exists(filename):
+                vprint('File exists:\n%s\nAborting.' % filename, 5)
+                sys.exit(1)
 
-def str_rep(state):
-    """ A helper function to return a string representation of the state."""
+    # read the lines and rstrip them of the EOL characters. We don't lstrip
+    # because we keep the space in front of molec_ids 1-9
+    vprint('reading .par lines from %s ...' % args.par_file)
+    lines = [x.rstrip() for x in open(args.par_file, 'r').readlines()]
+    ntrans = len(lines)
+    vprint(ntrans, 'lines read in')
+
+    # find out the ID at which we can start adding states
     try:
-        s_g = '%5d' % state.g
-    except TypeError:
-        s_g = ''
-    try:
-        s_E = '%10.4f' % state.E
-    except TypeError:
-        s_E = ''
-    return '%2d%1d%s%s%s' % (state.molec_id, state.iso_id, s_E,
-            s_g, state.serialize_qns())
+        first_stateID = State.objects.all().order_by('-id')[0].id + 1
+    except IndexError:
+        # no states in the database yet, so let's start at 1
+        first_stateID = 1
+    vprint('new states will be added with ids starting at %d' % first_stateID)
 
-# read the lines and rstrip them of the EOL characters. We don't lstrip
-# because we keep the space in front of molecIDs 1-9
-lines = [x.rstrip() for x in open(par_path, 'r').readlines()]
-states = {}
-out_states = open(os.path.join(out_dir, states_name), 'w')
-out_trans = open(os.path.join(out_dir, trans_name), 'w')
-start_time = time.time()
-stateID = 0
-for i,line in enumerate(lines):
-    trans = HITRANTransition.parse_par_line(line)
-    if trans is None:
-        # blank or comment line
-        continue
+    fo_s = open(args.states_file, 'w')
+    fo_t = open(args.trans_file, 'w')
+    start_time = time.time()
 
-    statep_str_rep = str_rep(trans.statep)
-    if statep_str_rep not in states:
-        # we've not seen this upper state before: save it and write it
-        # to out_states
-        trans.stateIDp = stateID
-        states[statep_str_rep] = stateID
-        stateID += 1
-        print >>out_states, trans.statep.to_str(state_fields, ',')
-    else:
-        trans.stateIDp = states[statep_str_rep]
-    statepp_str_rep = str_rep(trans.statepp)
-    if statepp_str_rep not in states:
-        # we've not seen this lower state before: save it and write it
-        # to out_states
-        trans.stateIDpp = stateID
-        states[statepp_str_rep] = stateID
-        stateID += 1
-        print >>out_states, trans.statepp.to_str(state_fields, ',')
-    else:
-        trans.stateIDpp = states[statepp_str_rep]
+    # keep track of the number of states already present in the database
+    old_states = 0
+    stateID = first_stateID
+    last_nu = 0.
+    perc_done = 0; perc_int = 1
+    for i, line in enumerate(lines):
 
-    print >>out_trans, trans.to_str(trans_fields, ',')
+        # progress indicator, as a percentage
+        perc = float(i)/ntrans * 100.
+        if perc - perc_done > perc_int:
+            vprint('%d %%' % perc_done, 1)
+            perc_done += perc_int
 
-out_trans.close()
-out_states.close()
+        trans = HITRANTransition.parse_par_line(line)
 
-end_time = time.time()
-print '%d transitions and %d states in %.1f secs' % (len(lines), len(states),
-            end_time - start_time)
+        if trans is None:
+            # blank or comment line
+            continue
+
+        if trans.nu.val < last_nu:
+            vprint('Error: %s transitions file isn\'t ordered by nu.'\
+                    % args.trans_file, 5)
+            sys.exit(1)
+        last_nu = trans.nu.val
+
+        trans.global_iso_id = args.global_iso_ids[
+                                (trans.molec_id, trans.local_iso_id)]
+        trans.statep.global_iso_id = trans.statepp.global_iso_id\
+                                   = trans.global_iso_id
+        
+        # first deal with the upper state ...
+        statep_str_rep = trans.statep.str_rep()
+        if statep_str_rep in db_stateIDs.keys():
+            # upper state already in the database
+            trans.stateIDp = db_stateIDs[statep_str_rep]
+            old_states += 1
+        else:
+            # the upper state is new: save it
+            trans.stateIDp = trans.statep.id = stateID
+            db_stateIDs[statep_str_rep] = stateID
+            stateID += 1
+            print >>fo_s, statep_str_rep
+
+        # next deal with the lower state ...
+        statepp_str_rep = trans.statepp.str_rep()
+        if statepp_str_rep in db_stateIDs.keys():
+            # lower state already in the database
+            trans.stateIDpp = db_stateIDs[statepp_str_rep]
+            old_states += 1
+        else:
+            # the lower state is new: save it
+            trans.stateIDpp = trans.statepp.id = stateID
+            db_stateIDs[statepp_str_rep] = stateID
+            stateID += 1
+            print >>fo_s, statepp_str_rep
+
+        # check that the references are in the tables hitranmeta_refs_map and
+        # hitranmeta_source - if they aren't this is fatal
+        for j, prm_name in enumerate(['nu', 'S', 'gamma_air', 'gamma_self',
+                                      'n_air', 'delta_air']):
+            iref = int(trans.par_line[133+2*j:135+2*j])
+            if iref == 0:
+                # don't worry about missing 0 refs (HITRAN 1986 paper)
+                source_id = 1
+            else:
+                sref = '%s-%s-%d' % (molecule.ordinary_formula,
+                                     prm_name, iref)
+                # we can't use '+' in XML attributes, so replace with 'p'
+                sref = sref.replace('+', 'p')
+                if sref not in d_refs.keys():
+                    print 'missing reference for %s in hitranmeta_refs_map'\
+                          ' table' % sref
+                    sys.exit(1)
+                source_id = d_refs[sref].source_id
+
+            if prm_name == 'S':
+                exec('trans.Sw.source_id = %d' % source_id)
+                exec('trans.A.source_id = %d' % source_id)
+            else:
+                try:
+                    exec('trans.%s.source_id = %d' % (prm_name, source_id))
+                except AttributeError:
+                    pass
+
+        # write the transition to the .trans file, *even if it is already
+        # in the database* - this is checked for on upload
+        print >>fo_t, trans.to_str(trans_fields, ',')
+
+    fo_t.close()
+    fo_s.close()
+    vprint('%d states were already in the database' % old_states)
+    vprint('%d new or updated states were identified'\
+                    % (stateID-first_stateID))
+
+    end_time = time.time()
+    vprint('%d transitions and %d states in %.1f secs'\
+                % (len(lines), len(db_stateIDs), end_time - start_time))

@@ -1,0 +1,28 @@
+# atmos-min collection - a minimal set of parameters for each
+# transition for atmospheric applications
+
+molecule_id
+local_iso_id
+nu.val
+Sw.val
+Elower
+gp
+gpp
+gamma_air.val
+gamma_self.val
+n_air.val
+delta_air.val
+
+nu.err
+Sw.err
+gamma_air.err
+gamma_self.err
+n_air.err
+delta_air.err
+
+nu.ref
+Sw.ref
+gamma_air.ref
+gamma_self.ref
+n_air.ref
+delta_air.ref 

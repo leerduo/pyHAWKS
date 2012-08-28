@@ -180,7 +180,7 @@ def get_hitran_quanta(trans):
         s_multipole = 'm'    # magnetic dipole
     if trans.molec_id == 13:    # OH
         kronig_parityp = qn_to_str(trans.statep, 'kronigParity', '%s', ' ')
-        if trans.iso_id < 3:
+        if trans.local_iso_id < 3:
             # (16O)H and (18O)H coupling with H gives integer F (I=0.5)
             s_Fp = qn_to_str(trans.statep, 'F', '%5d', ' '*5)
             s_Fpp = qn_to_str(trans.statepp, 'F', '%5d', ' '*5)

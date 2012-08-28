@@ -11,6 +11,13 @@
 
 import os
 import sys
+
+from pyHAWKS_config import *
+# Django needs to know where to find the HITRAN project's settings.py:
+sys.path.append(SETTINGS_PATH)
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from hitranmeta.models import Molecule, Iso 
+
 import time
 from hitran_cases import *
 from hitran_transition import HITRANTransition
@@ -19,38 +26,45 @@ import hitran_meta
 import xn_utils
 from fmt_xn import *
 from correct_par import *
-from HITRAN_configs import dbname
 
-HOME = os.getenv('HOME')
-if dbname.lower() == 'hitran':
-    data_dir = os.path.join(HOME, 'research/HITRAN/data/hitran')
-elif dbname.lower() == 'minihitran':
-    data_dir = os.path.join(HOME, 'research/HITRAN/data/minihitran')
-elif dbname.lower() == 'microhitran':
-    data_dir = os.path.join(HOME, 'research/HITRAN/data/microhitran')
-file_stem = sys.argv[1]
+filestem = sys.argv[1]
 
-trans_file = os.path.join(data_dir, '%s.trans' % file_stem)
-states_file = os.path.join(data_dir, '%s.states' % file_stem)
-corrections_file = os.path.join(data_dir, '%s.corrections' % file_stem)
+# get the Molecule and Iso objects from the molecID, taken from
+# the par_file filename
+try:
+    molecID = int(filestem.split('_')[0])
+except:
+    print 'couldn\'t parse molecID from filestem %s' % filestem
+    print 'the filename should start with "<molecID>_"'
+    sys.exit(1)
+molecule = Molecule.objects.filter(pk=molecID).get()
+isos = Iso.objects.filter(molecule=molecule).order_by('isoID')
+# map global isotopologue ID to local, HITRAN molecID and isoID
+hitran_ids = {}
+for iso in isos:
+    hitran_ids[iso.id] = (iso.molecule.id, iso.isoID)
+
+trans_file = os.path.join(DATA_DIR, '%s.trans' % filestem)
+states_file = os.path.join(DATA_DIR, '%s.states' % filestem)
+corrections_file = os.path.join(DATA_DIR, '%s.corrections' % filestem)
 
 states = []
 for line in open(states_file, 'r'):
-    fields = line.split(',')
-    molec_id = int(fields[0])
-    iso_id = int(fields[1])
+    global_iso_id = int(line[:4])
+    molec_id, local_iso_id = hitran_ids[global_iso_id]
     try:
-        E = float(fields[2])
+        E = float(line[5:15])
     except (TypeError, ValueError):
         E = None
     try:
-        g = int(fields[3])
+        g = int(line[16:21])
     except (TypeError, ValueError):
         g = None
-    s_qns = fields[4].strip()
-    CaseClass = hitran_meta.get_case_class(molec_id, iso_id)
-    states.append(CaseClass(molec_id=molec_id, iso_id=iso_id, E=E, g=g,
-                       s_qns=s_qns))
+    s_qns = line[22:].strip()
+    CaseClass = hitran_meta.get_case_class(molec_id, local_iso_id)
+    states.append(CaseClass(molec_id=molec_id, local_iso_id=local_iso_id,
+                            global_iso_id=global_iso_id, E=E, g=g,
+                            s_qns=s_qns))
 print '%d states read in.' % (len(states))
 
 trans = []
@@ -69,10 +83,10 @@ for line in open(trans_file, 'r'):
     fields = line.split(',')
     for i, output_field in enumerate(trans_fields):
         this_trans.set_param(output_field.name, fields[i], output_field.fmt)
-    this_trans.statep = states[this_trans.stateIDp]
-    this_trans.statepp = states[this_trans.stateIDpp]
+    this_trans.statep = states[this_trans.stateIDp-1]
+    this_trans.statepp = states[this_trans.stateIDpp-1]
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
-                        this_trans.iso_id)
+                        this_trans.local_iso_id)
     if not this_trans.validate_as_par():
         this_trans.old_par_line = this_trans.par_line
         this_trans.par_line = correct_par(this_trans)

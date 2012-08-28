@@ -1,0 +1,14 @@
+# comprehensive collection - all parameters and states for each
+# transition
+
+molecule_id
+local_iso_id
+global_iso_id
+nu
+Elower
+gp
+gpp
+statep_id
+statepp_id
+all_params
+

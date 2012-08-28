@@ -39,7 +39,7 @@ def correct_par(trans):
         # which are 's' in their lower state, the Q field has 'a'
         if par_line[96] == 's' and par_line[122] == 'a':
             par_line = par_line[:122] + 's' + par_line[123:]
-        if trans.iso_id == 2:
+        if trans.local_iso_id == 2:
             # (15N)H3 uses +/- for some lines
             if par_line[122] == '+':
                 par_line = par_line[:122] + 's' + par_line[123:]

@@ -31,7 +31,11 @@ class HITRANTransition(Transition):
         # HITRAN molecule ID:
         self.molec_id = None
         # HITRAN isotopologue ID:
-        self.iso_id = None
+        self.local_iso_id = None
+
+        # global isotopologue ID, to be set elsewhere:
+        self.global_iso_id = -1
+
         # vacuum wavenumber (cm-1)
         self.nu = None
         # line intensity at 296 K(cm-1/(molec.cm-2). NB in the native
@@ -95,7 +99,7 @@ class HITRANTransition(Transition):
             # HITRAN molecule ID
             this_trans.molec_id = int(line[:2])
             # HITRAN isotopologue ID
-            this_trans.iso_id = int(line[2])
+            this_trans.local_iso_id = int(line[2])
             # vacuum wavenumber (cm-1)
             this_trans.nu = HITRANParam(val=float(line[3:15]),
                 ref=int(Iref[:2]), name='nu', ierr=int(Ierr[0]))
@@ -257,7 +261,7 @@ class HITRANTransition(Transition):
         s_Iref = self.par_line[133:145]
 
         s_molec_id = xn_utils.to_str(self.molec_id, '%2d', '??')
-        s_iso_id = xn_utils.to_str(self.iso_id, '%1d', '?')
+        s_local_iso_id = xn_utils.to_str(self.local_iso_id, '%1d', '?')
         s_nu = xn_utils.prm_to_str(self.nu, '%12.6f', '?'*12)
         s_Sw = xn_utils.prm_to_str(self.Sw, '%10.3E', '?'*10)
         s_A = xn_utils.prm_to_str(self.A, '%10.3E', '?'*10)
@@ -268,7 +272,7 @@ class HITRANTransition(Transition):
         if self.flag:
             s_flag = self.flag
 
-        s_trans = ('%s'*19) % (s_molec_id, s_iso_id, s_nu, s_Sw,
+        s_trans = ('%s'*19) % (s_molec_id, s_local_iso_id, s_nu, s_Sw,
             s_A, s_gamma_air, s_gamma_self, s_Elower, s_n_air,
             s_delta_air, Vp, Vpp, Qp, Qpp, s_Ierr, s_Iref, s_flag,
             s_gp, s_gpp)

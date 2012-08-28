@@ -1,0 +1,10 @@
+# min collection - a minimal set of parameters for each transition
+
+molecule_id
+local_iso_id
+nu.val
+A.val
+Elower
+gp
+gpp
+
