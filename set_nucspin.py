@@ -47,10 +47,10 @@ for state in states:
         #print qns, 'is para'
         ortho = False; para = True
     if ortho:
-        print "UPDATE hitran.hitranlbl_state SET nucspin_label='o'"\
+        print "UPDATE hitran2.hitranlbl_state SET nucspin_label='o'"\
               " WHERE id = %d" % state.id
     elif para:
-        print "UPDATE hitran.hitranlbl_state SET nucspin_label='p'"\
+        print "UPDATE hitran2.hitranlbl_state SET nucspin_label='p'"\
               " WHERE id = %d" % state.id
 print 'northo = %d; npara =%d' % (northo, npara)
 
