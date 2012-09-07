@@ -1,14 +1,21 @@
 # comprehensive collection - all parameters and states for each
 # transition
 
+global_iso_id
 molecule_id
 local_iso_id
-global_iso_id
-nu
 Elower
 gp
 gpp
+
 statep_id
 statepp_id
-all_params
+
+nu.val
+Sw.val
+A.val
+gamma_air.val
+gamma_self.val
+n_air.val
+delta_air.val
 

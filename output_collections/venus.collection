@@ -1,0 +1,20 @@
+# venus collection - a set of parameters for application to the atmosphere
+# of Venus
+
+global_iso_id
+molecule_id
+local_iso_id
+Elower
+gp
+gpp
+
+statep_id
+statepp_id
+
+nu.val
+Sw.val
+A.val
+gamma_CO2.val
+n_CO2.val
+delta_CO2.val
+

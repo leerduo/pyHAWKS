@@ -157,7 +157,6 @@ def parse_par(args, molecule, isos, d_refs):
 
     fo_t.close()
     fo_s.close()
-    vprint('%d states were already in the database' % old_states)
     vprint('%d new or updated states were identified'\
                     % (stateID-first_stateID))
 
