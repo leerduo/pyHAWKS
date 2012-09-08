@@ -13,6 +13,9 @@
 
 from lbl.output_field import OutputField
 
+# NB Don't change anything in this file, or the upload_data routines will
+# fail because they hard-code the field widths...
+
 state_fields = [OutputField('id', '%12d', 'int'),
                 OutputField('global_iso_id', '%4d', int),
                 OutputField('E', '%10.4f', float),
