@@ -17,6 +17,7 @@ import sys
 import time
 import datetime
 from xn_utils import vprint, timed_at
+from django.db import connection, transaction
 from pyHAWKS_config import SETTINGS_PATH, HITRAN1986_SOURCEID
 import hitran_meta
 from fmt_xn import trans_prms, trans_fields
@@ -26,7 +27,7 @@ from hitran_param import HITRANParam
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from hitranmeta.models import Case, Source
-from hitranlbl.models import State, Qns, Trans, Prm
+from hitranlbl.models import State, Qns, Trans
 
 def expire_old_transitions(args):
     """
@@ -36,7 +37,10 @@ def expire_old_transitions(args):
 
     """
 
-    vprint('expiring old transitions ...')
+    if args.dry_run:
+        vprint('[DRY RUN] expiring old transitions ...')
+    else:
+        vprint('expiring old transitions ...')
     # expire_date is to be the day before the modification date of the
     # par file we're uploading:
     expire_date = args.mod_date - datetime.timedelta(1)
@@ -72,7 +76,10 @@ def upload_states(args, isos, cases_list):
 
     """
 
-    vprint('Uploading states...')
+    if args.dry_run:
+        vprint('[DRY RUN] Uploading states...')
+    else:
+        vprint('Uploading states...')
     # the uploaded states will be stored in this list:
     states = []
     start_time = time.time()
@@ -191,7 +198,10 @@ def upload_data(args, molecule, isos, d_refs):
 
     """
 
-    vprint('Uploading to database...')
+    if args.dry_run:
+        vprint('[DRY RUN] Uploading to database...')
+    else:
+        vprint('Uploading to database...')
 
     # first, expire old lines
     expire_old_transitions(args)
@@ -220,7 +230,11 @@ def upload_data(args, molecule, isos, d_refs):
     hitran86_source = Source.objects.all().filter(pk=HITRAN1986_SOURCEID).get()
 
     # now read in and upload the transitions
-    vprint('Uploading transitions ...')
+    if args.dry_run:
+        vprint('[DRY RUN] Uploading transitions ...')
+    else:
+        cursor = connection.cursor()
+        vprint('Uploading transitions ...')
     start_time = time.time()
     ntrans = 0
     for line in open(args.trans_file_upload, 'r'):
@@ -268,8 +282,7 @@ def upload_data(args, molecule, isos, d_refs):
             # if we're really uploading, save the transition to the database
             this_trans.save()
         
-        # create the hitranlbl.Prm objects for this transition's parameters
-        # XXX change this!
+        # create and execute the INSERT strings for the transition's parameters
         for prm_name in trans_prms:
             val = trans.get_param_attr(prm_name, 'val')
             if val is None:
@@ -277,25 +290,30 @@ def upload_data(args, molecule, isos, d_refs):
                 continue
             # fetch the Source object for this parameter
             source_id = trans.get_param_attr(prm_name, 'source_id')
-            if source_id is not None:
-                source = sources[source_id]
-            else:
+            if source_id is None:
                 # if we can't identify source_id, it's missing from the
                 # hitranmeta_refs_map and/or hitransmeta_source tables:
                 # this is fatal and we must exit with an error
                 print 'Error! no reference specified for', prm_name
                 sys.exit(1)
 
-            # create the Prm object for this parameter - XXX change this
-            prm = Prm(trans=this_trans,
-                      name=prm_name,
-                      val=val,
-                      err=trans.get_param_attr(prm_name, 'err'),
-                      ierr=trans.get_param_attr(prm_name, 'ierr'),
-                      source=source)
+            # create the parameter object for this parameter
+            prm_fields = ['trans_id', 'val']
+            prm_entries = [str(this_trans.id), str(val)]
+            err = trans.get_param_attr(prm_name, 'err')
+            if err is not None:
+                prm_fields.append('err')
+                prm_entries.append(str(err))
+            prm_fields.append('ierr')
+            prm_entries.append(str(trans.get_param_attr(prm_name, 'ierr')))
+            prm_fields.append('source_id')
+            prm_entries.append(str(source_id))
+            s_insert = 'INSERT INTO prm_%s (%s) VALUES (%s)'\
+                             % (prm_name.lower(), ', '.join(prm_fields),
+                                ', '.join(prm_entries))
             if not args.dry_run:
                 # if we're really uploading, save the prm to the database
-                prm.save()
+                cursor.execute(s_insert)
 
     end_time = time.time()
     vprint('%d transitions read in (%s)' % (ntrans,

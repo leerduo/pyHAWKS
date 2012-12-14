@@ -82,16 +82,17 @@ def write_db_trans(args, molecule, isos):
         # db_trans_file output
         s_vals = []
         for trans_field in trans_fields:
-            # translate <prm>.ref to <prm>.source.id
-            # XXX change this, too
-            if trans_field.name.endswith('.ref'):
-                trans_field.name = '%s.source.id' % transfield[:-4]
             try:
                 val = eval('trans.%s' % trans_field.name)
-                s_vals.append(trans_field.fmt % val)
+                if val is None:
+                    s_vals.append(trans_field.default)
+                else:
+                    s_vals.append(trans_field.fmt % val)
             except AttributeError:
                 # no value for this field - use the default
                 s_vals.append(trans_field.default)
+            #except TypeError:
+            #    vprint('None value for trans_field %s' % trans_field.name)
 
         # write the fields, separated by commas in case someone is
         # foolish enough to think it a good idea to read the file in Excel
