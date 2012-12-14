@@ -19,7 +19,10 @@ branch = { 'K': -6, 'L': -5, 'M': -4, 'N': -3, 'O': -2, 'P': -1, 'Q': 0,
 		   -6: 'K', -5: 'L', -4: 'M', -3: 'N', -2: 'O', -1: 'P', 0: 'Q',
             1: 'R', 2: 'S', 3: 'T', 4: 'U', 5: 'V', 6: 'W'}
 
-vib_qn_patt = '^v(\d+)$'    # regexp matching vibrational quantum number name
+# regexp matching vibrational quantum number name
+vib_qn_patt = '^v(\d+)$'
+# regexp matching vibrational angular momentum quantum number name
+vib_amqn_patt = '^l(\d+)$'
 
 def save_qn(qns, qn_name, qn_str):
     """

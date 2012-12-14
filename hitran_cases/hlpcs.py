@@ -7,13 +7,14 @@
 # molecules from the HITRAN database.
 
 from lbl.lpcs import Lpcs
-from hcase_globals import vib_qn_patt
+from hcase_globals import vib_qn_patt, vib_amqn_patt
 import re
 
 class HLpcs(Lpcs):
     # the canonical order for outputting quantum numbers for states of
     # this 'case'
     ordered_qn_list = ['ElecStateLabel', 'v1', 'v2', 'v3', 'v4', 'v5',
+                       'v6', 'v7', 'l5', 'l6', 'l7',
                        'l', 'vibInv', 'vibRefl', 'J', 'F', 'r', 'parity',
                        'kronigParity']
 
@@ -21,7 +22,9 @@ class HLpcs(Lpcs):
     qn_types = {'ElecStateLabel': str,
                 'J': int,
                 'v1': int, 'v2': int, 'v3': int, 'v4': int,
-                'v5': int, 'l': int, 'F': float, 'r': int, 'vibInv': str,
+                'v5': int, 'v6': int, 'v7': int,
+                'l5': int, 'l6': int, 'l7': int,
+                'l': int, 'F': float, 'r': int, 'vibInv': str,
                 'vibRefl': str, 'parity': str, 'kronigParity': str}
 
     def get_qn_xml(self, qn_name):
@@ -43,6 +46,9 @@ class HLpcs(Lpcs):
             m = re.match(vib_qn_patt, qn_name)
             if m:
                 qn_name = 'vi'
+            m = re.match(vib_amqn_patt, qn_name)
+            if m:
+                qn_name = 'li'
             return '<%s:%s %s>%s</%s:%s>' % (case_prefix, qn_name,
                 xml_attrs, str(qn), case_prefix, qn_name)
         # no attributes:
@@ -63,6 +69,9 @@ class HLpcs(Lpcs):
 
         # match to 'v1', 'v2', 'v12', etc.
         m = re.match(vib_qn_patt, qn_name)
+        if m:
+            return [('mode', '%s' % m.group(1)),]
+        m = re.match(vib_amqn_patt, qn_name)
         if m:
             return [('mode', '%s' % m.group(1)),]
 

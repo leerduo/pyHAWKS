@@ -79,7 +79,7 @@ def parse_par(args, molecule, isos, d_refs):
         percent = float(i)/ntrans * 100.
         if percent - percent_done > percent_increment:
             vprint('%d %%' % percent_done, 1)
-            percent_done += percent_int
+            percent_done += percent_increment
 
         # parse the par_line into a HITRANTransition object
         trans = HITRANTransition.parse_par_line(line)

@@ -153,7 +153,7 @@ def upload_states(args, isos, cases_list):
 
     end_time = time.time()
     vprint('%d states read in (%s)' % (len(states),
-                xn_utils.timed_at(end_time - start_time)))
+                timed_at(end_time - start_time)))
     return states
 
 def get_sources(d_refs):
@@ -209,7 +209,7 @@ def upload_data(args, molecule, isos, d_refs):
     except IndexError:
         # no states in the database yet, so we start at 1
         first_stateID = 1
-    vprint('new states will be added with ids starting at', first_stateID)
+    vprint('new states will be added with ids starting at %d' % first_stateID)
 
     # upload the new states
     states = upload_states(args, isos, cases_list)
@@ -299,5 +299,5 @@ def upload_data(args, molecule, isos, d_refs):
 
     end_time = time.time()
     vprint('%d transitions read in (%s)' % (ntrans,
-                xn_utils.timed_at(end_time - start_time)))
+                timed_at(end_time - start_time)))
 

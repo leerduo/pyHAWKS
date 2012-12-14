@@ -17,6 +17,7 @@ from pyHAWKS_config import *
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from hitranmeta.models import Molecule, Iso 
+from hitranlbl.models import State
 
 import time
 from hitran_cases import *
@@ -67,6 +68,7 @@ for line in open(states_file, 'r'):
                             s_qns=s_qns))
 print '%d states read in.' % (len(states))
 
+stateID_offset = State.objects.all().order_by('-id')[0].id + 1
 trans = []
 start_time = time.time()
 line_no = 0
@@ -83,8 +85,8 @@ for line in open(trans_file, 'r'):
     fields = line.split(',')
     for i, output_field in enumerate(trans_fields):
         this_trans.set_param(output_field.name, fields[i], output_field.fmt)
-    this_trans.statep = states[this_trans.stateIDp-1]
-    this_trans.statepp = states[this_trans.stateIDpp-1]
+    this_trans.statep = states[this_trans.stateIDp - stateID_offset]
+    this_trans.statepp = states[this_trans.stateIDpp - stateID_offset]
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
                         this_trans.local_iso_id)
     if not this_trans.validate_as_par():

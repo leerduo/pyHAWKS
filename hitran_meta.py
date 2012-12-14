@@ -52,7 +52,7 @@ def get_states(trans):
         case_module, CaseClass = hcase_nltos, hnltos.HNltos
     elif trans.molec_id in (8, 13, 18):
         case_module, CaseClass = hcase_hunda, hhunda.HHundA
-    elif trans.molec_id == 26:
+    elif trans.molec_id in (26,44):
         case_module, CaseClass = hcase_lpcs, hlpcs.HLpcs
 
     if case_module and CaseClass:
@@ -94,7 +94,7 @@ def get_case_module(molec_id, local_iso_id):
         return hcase_nltos
     elif molec_id in (8, 13, 18):
         return hcase_hunda
-    elif molec_id == 26:
+    elif molec_id in (26, 44):
         return hcase_lpcs
 
     print 'Unrecognised molec_id, local_iso_id =', molec_id, local_iso_id
@@ -124,7 +124,7 @@ def get_case_class(molec_id, local_iso_id):
         return hnltos.HNltos
     elif molec_id in (8, 13, 18):
         return hhunda.HHundA
-    elif molec_id == 26:
+    elif molec_id in (26, 44):
         return hlpcs.HLpcs
 
     print 'Unrecognised molec_id, local_iso_id =', molec_id, local_iso_id
