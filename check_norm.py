@@ -68,6 +68,28 @@ for line in open(states_file, 'r'):
                             s_qns=s_qns))
 print '%d states read in.' % (len(states))
 
+def get_state(stateID):
+    """
+    Get the state with ID stateID - if this is greater than or equal to
+    stateID_offset (ie its ID is higher than the highest already in the
+    database), then it is a new state and we expect to find it in our
+    states[] list. If it is less than stateID_offset, we need to retrieve it
+    from the database.
+
+    """
+    if stateID < stateID_offset:
+        state = State.objects.get(pk=stateID)
+        # map the Django State object to an instance of the appropriate
+        # CaseClass for this state
+        global_iso_id = state.iso_id
+        molec_id, local_iso_id = hitran_ids[global_iso_id]
+        CaseClass = hitran_meta.get_case_class(molec_id, local_iso_id)
+        return CaseClass(molec_id=molec_id, local_iso_id=local_iso_id,
+                         global_iso_id=global_iso_id, E=state.energy,
+                         g=state.g, s_qns=state.s_qns)
+    else:
+        return states[stateID - stateID_offset]
+
 stateID_offset = State.objects.all().order_by('-id')[0].id + 1
 trans = []
 start_time = time.time()
@@ -85,8 +107,9 @@ for line in open(trans_file, 'r'):
     fields = line.split(',')
     for i, output_field in enumerate(trans_fields):
         this_trans.set_param(output_field.name, fields[i], output_field.fmt)
-    this_trans.statep = states[this_trans.stateIDp - stateID_offset]
-    this_trans.statepp = states[this_trans.stateIDpp - stateID_offset]
+    #print this_trans.stateIDp, this_trans.stateIDpp
+    this_trans.statep = get_state(this_trans.stateIDp)
+    this_trans.statepp = get_state(this_trans.stateIDpp)
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
                         this_trans.local_iso_id)
     if not this_trans.validate_as_par():

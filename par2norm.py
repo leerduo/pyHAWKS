@@ -56,7 +56,7 @@ def parse_par(args, molecule, isos, d_refs):
     vprint('reading .par lines from %s ...' % args.par_file)
     lines = [x.rstrip() for x in open(args.par_file, 'r').readlines()]
     ntrans = len(lines)
-    vprint(ntrans, 'lines read in')
+    vprint('%d lines read in' % ntrans)
 
     # find out the state ID at which we can start adding states
     try:

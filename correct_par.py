@@ -72,4 +72,12 @@ def correct_par(trans):
         if par_line[100:103] == ' -1':
             par_line = par_line[:100] + '   ' + par_line[103:]
 
+    if trans.molec_id in (16,17):
+        # some HBr and HI lines have gamma_self formatted as .ddd0 instead
+        # of 0.ddd
+        if par_line[40] == '.':
+            gamma_self = float(par_line[40:45])
+            s_gamma_self = '%5.3f' % gamma_self
+            par_line = par_line[:40] + s_gamma_self + par_line[45:]
+
     return par_line
