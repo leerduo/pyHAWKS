@@ -22,4 +22,5 @@ __all__ = [#'molecule_globals',
            'hcase_asymcs', 'hasymcs',
            'hcase_nltos', 'hnltos',
            'hcase_lpcs', 'hlpcs',
+           'hcase_OHAX',
           ]

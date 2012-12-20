@@ -18,14 +18,15 @@ import sys
 import re
 import time
 import datetime
-from fmt_xn import trans_fields
+from fmt_xn import trans_prms, trans_fields
 from xn_utils import vprint
 
 from pyHAWKS_config import SETTINGS_PATH
 # Django needs to know where to find the HITRAN project's settings.py:
 sys.path.append(SETTINGS_PATH)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-from hitranlbl.models import Trans
+from django.db import connection
+from hitranlbl.models import Trans, Prm
 
 def write_db_trans(args, molecule, isos):
     """
@@ -36,6 +37,7 @@ def write_db_trans(args, molecule, isos):
 
     """
 
+    cursor = connection.cursor()
     vprint('Retrieving existing transitions from database...')
 
     today = datetime.date.today()
@@ -73,12 +75,21 @@ def write_db_trans(args, molecule, isos):
         except IndexError:
             trans.flag = ' '
 
-        # attach the parameters directly to the transition
-        # XXX this needs changing with the new prm tables
-        for prm in trans.prm_set.all():
-            exec('trans.%s = prm' % prm.name)
-
-        # build a list of strings, each of which is field in the
+        # get the parameters for this transition
+        for prm in trans_prms:
+            command = 'SELECT * FROM prm_%s WHERE trans_id=%d'\
+                         % (prm.lower(), trans.id)
+            cursor.execute(command)
+            rows = cursor.fetchall()
+            if not rows:
+                # this parameter apparently doesn't exist for this transition
+                continue
+            # make a generic Prm object named for the parameter, and with
+            # the attributes val, err, ierr and source_id in that order:
+            #globals()[prm] = Prm(*rows[0][1:])
+            setattr(trans, prm, Prm(*rows[0][1:]))
+            
+        # build a list of strings, each of which is a field in the
         # db_trans_file output
         s_vals = []
         for trans_field in trans_fields:

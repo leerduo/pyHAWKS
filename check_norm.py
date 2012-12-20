@@ -62,7 +62,7 @@ for line in open(states_file, 'r'):
     except (TypeError, ValueError):
         g = None
     s_qns = line[22:].strip()
-    CaseClass = hitran_meta.get_case_class(molec_id, local_iso_id)
+    CaseClass = hitran_meta.get_case_class(molec_id, local_iso_id, s_qns[15])
     states.append(CaseClass(molec_id=molec_id, local_iso_id=local_iso_id,
                             global_iso_id=global_iso_id, E=E, g=g,
                             s_qns=s_qns))
@@ -112,6 +112,11 @@ for line in open(trans_file, 'r'):
     this_trans.statepp = get_state(this_trans.stateIDpp)
     this_trans.case_module = hitran_meta.get_case_module(this_trans.molec_id,
                         this_trans.local_iso_id)
+
+    # OH (A-X) system is a special case:
+    if this_trans.statep.global_iso_id == 48 and s_qns[15]=='A':
+        this_trans.case_module = hcase_OHAX
+
     if not this_trans.validate_as_par():
         this_trans.old_par_line = this_trans.par_line
         this_trans.par_line = correct_par(this_trans)

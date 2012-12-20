@@ -50,10 +50,29 @@ def get_states(trans):
         case_module, CaseClass = hcase_asymcs, hasymcs.HAsymcs
     elif trans.molec_id in (10, 33):
         case_module, CaseClass = hcase_nltos, hnltos.HNltos
-    elif trans.molec_id in (8, 13, 18):
+    elif trans.molec_id in (8, 18):
         case_module, CaseClass = hcase_hunda, hhunda.HHundA
     elif trans.molec_id in (26,44):
         case_module, CaseClass = hcase_lpcs, hlpcs.HLpcs
+    elif trans.molec_id == 13:
+        # OH
+        if trans.nu.val > 25000.:
+            # A(2Sigma+)-X(2Pi) transitions in the UV
+            # deal with this as a special case, because the upper and lower
+            # states belong to different cases (Hund's case (b) and (a)).
+            case_module = hcase_OHAX
+            qnsp, qnspp, multipole = case_module.parse_qns(trans)
+            statep = hhundb.HHundB(trans.molec_id, trans.local_iso_id,
+                           trans.global_iso_id, trans.Eupper, None,
+                           trans.gp, qnsp)
+            statepp = hhunda.HHundA(trans.molec_id, trans.local_iso_id,
+                            trans.global_iso_id, trans.Elower, None,
+                            trans.gpp, qnspp)
+            return case_module, statep, statepp, multipole
+        else:
+            # X(2Pi)-X(2Pi) transitions
+            case_module, CaseClass = hcase_hunda, hhunda.HHundA
+        
 
     if case_module and CaseClass:
         qnsp, qnspp, multipole = case_module.parse_qns(trans)
@@ -65,7 +84,8 @@ def get_states(trans):
                             trans.gpp, qnspp)
         return case_module, statep, statepp, multipole
 
-    print 'Unrecognised molec_id, local_iso_id =', trans.molec_id, trans.local_iso_id
+    print 'Unrecognised molec_id, local_iso_id =', trans.molec_id,\
+                                                   trans.local_iso_id
     return None, None, None, None
 
 def get_case_module(molec_id, local_iso_id):
@@ -100,7 +120,7 @@ def get_case_module(molec_id, local_iso_id):
     print 'Unrecognised molec_id, local_iso_id =', molec_id, local_iso_id
     return None
 
-def get_case_class(molec_id, local_iso_id):
+def get_case_class(molec_id, local_iso_id, ElecStateLabel='X'):
     if molec_id in (5, 14, 15, 16, 17, 22, 36, 46):
         return hdcs.HDcs
     elif molec_id in (1, 3, 9, 21, 31, 37):
@@ -122,10 +142,16 @@ def get_case_class(molec_id, local_iso_id):
         return hasymcs.HAsymcs
     elif molec_id in (10, 33):
         return hnltos.HNltos
-    elif molec_id in (8, 13, 18):
+    elif molec_id in (8, 18):
         return hhunda.HHundA
     elif molec_id in (26, 44):
         return hlpcs.HLpcs
+    elif molec_id == 13:
+        if ElecStateLabel == 'A':
+            # OH A(2Sigma+) is Hund's case (b)
+            return hhundb.HHundB
+        # OH X(2Pi) is Hund's case (a)
+        return hhunda.HHundA
 
     print 'Unrecognised molec_id, local_iso_id =', molec_id, local_iso_id
     return None

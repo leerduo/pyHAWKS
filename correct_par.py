@@ -55,7 +55,10 @@ def correct_par(trans):
 
     if trans.molec_id == 13:
         # remove the N-branch designation for OH
-        par_line = par_line[:113] + ' ' + par_line[114:]
+        if trans.nu.val > 25000.:
+            par_line = par_line[:114] + ' ' + par_line[115:]
+        else:
+            par_line = par_line[:113] + ' ' + par_line[114:]
     if trans.molec_id == 8:
         # remove the N-branch designation for NO and ClO
         par_line = par_line[:114] + ' ' + par_line[115:]
