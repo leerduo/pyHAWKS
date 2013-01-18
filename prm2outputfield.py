@@ -48,9 +48,9 @@ for suffix, modifier in modifiers.items():
     m = re.match(patt, cfmt); l = int(m.group(1))
     default = "' '*%d" % l
     prm_type = 'float'
-    eval_str = 'trans.prms[\'%s\'].%s' % (prm_name, suffix)
+    #eval_str = 'trans.prms[\'%s\'].%s' % (prm_name, suffix)
     output_field = OutputField(name=name, name_html=name_html,
         cfmt=cfmt, ffmt=ffmt, desc=desc, desc_html=desc_html,
-        default=default, prm_type=prm_type, eval_str=eval_str)
+        default=default, prm_type=prm_type)#, eval_str=eval_str)
     output_field.save()
     

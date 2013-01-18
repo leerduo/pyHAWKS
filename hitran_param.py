@@ -51,7 +51,7 @@ class HITRANParam(Param):
     rel_err_max = [None, None, None, None, 0.2, 0.1, 0.05, 0.02, 0.01]
 
     def __init__(self, val, err=None, ref=None, name=None, ierr=None,
-                 rerr=None, relative=False):
+                 rerr=None, relative=False, source_id=None):
         """
         Initialize an instance of the HITRANParam class. Initialization is
         as for the base Param class, except that the integer ierr argument
@@ -72,11 +72,31 @@ class HITRANParam(Param):
             elif self.ierr == 2:
                 self.comment = 'average or estimate'
 
-        if self.err is None and self.ierr is not None and not self.relative:
-            self.set_abs_err()
+        if self.err is None:
+            if self.ierr is not None and not self.relative:
+                self.set_abs_err()
 
         if self.relative:
             self.set_rel_err()
+        self.source_id = source_id
+
+    def set_ierr(self):
+        if self.err is None or self.val is None:
+            return
+        self.ierr = 0
+        if self.relative:
+            if self.val == 0.:
+                return
+            self.rerr = self.err / abs(self.val)
+            for i,e in reversed(list(enumerate(self.rel_err_max[4:]))):
+                if self.rerr < e:
+                    self.ierr = i+4
+                    break
+        else:
+            for i,e in reversed(list(enumerate(self.abs_err_max[1:]))):
+                if self.err < e:
+                    self.ierr = i+1
+                    break
 
     def set_abs_err(self):
         """
